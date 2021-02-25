@@ -28,7 +28,7 @@ function ExampleFunction() {
 ### Global Variables
 Global variables are those that can always be accessed from any part of the code and from totally different files--as long as they are compiled and ran under the same environment.
 
-##### Global Variables Example
+##### Global Variables Demonstration
 ```cpp
 rebar::environment env;
 
