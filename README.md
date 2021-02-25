@@ -1,2 +1,2 @@
 # Rebar
-Fast, embeddable, JIT language.
+Fast, embeddable, JIT compiled language.
