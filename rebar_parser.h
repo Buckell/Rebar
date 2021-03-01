@@ -34,8 +34,8 @@ namespace rebar {
 		decrement,
 		open_group,
 		close_group,
-		open_array,
-		close_array,
+		open_selector,
+		close_selector,
 		open_scope,
 		close_scope,
 		equality,
@@ -163,8 +163,8 @@ namespace rebar {
 			separators.emplace_back("--", separator_type::decrement, 0);
 			separators.emplace_back("(", separator_type::open_group, 0);
 			separators.emplace_back(")", separator_type::close_group, 0);
-			separators.emplace_back("[", separator_type::open_array, 0);
-			separators.emplace_back("]", separator_type::close_array, 0);
+			separators.emplace_back("[", separator_type::open_selector, 0);
+			separators.emplace_back("]", separator_type::close_selector, 0);
 			separators.emplace_back("}", separator_type::open_scope, 0);
 			separators.emplace_back("{", separator_type::close_scope, 0);
 			separators.emplace_back("}", separator_type::close_scope, 0);
@@ -321,11 +321,43 @@ namespace rebar {
 
 	private:
 		[[nodiscard]] node::ranged_selector parse_ranged_selector(const std::span<token> selector_tokens) const noexcept {
+			size_t selector_increment{ 0 };
 
+			for (size_t i{ 0 }; i < selector_tokens.size(); i++) {
+				const token& t{ selector_tokens[i] };
+
+				if (t == separator_type::open_selector) {
+					selector_increment++;
+				} else if (t == separator_type::close_selector) {
+					selector_increment--;
+				} else if (selector_increment == 0 && t == separator_type::seek) {
+					return node::ranged_selector(parse_group(selector_tokens.subspan(0, i - 1)), parse_group(selector_tokens.subspan(i + 1)));
+				}
+			}
 		}
 
 		[[nodiscard]] node::argument_list parse_arguments(const std::span<token> argument_tokens) const noexcept {
+			std::vector<node> argument_nodes;
+			size_t group_increment{ 0 };
+			size_t last_index{ 0 };
 
+			for (size_t i{ 0 }; i < argument_tokens.size(); i++) {
+				const token& t{ argument_tokens[i] };
+
+				if (t == separator_type::open_group) {
+					group_increment++;
+				} else if (t == separator_type::close_group) {
+					group_increment--;
+				} else if (group_increment == 0 && t == separator_type::list) {
+					if (i - last_index == 2) {
+						argument_nodes.emplace_back(argument_tokens[i - 1]);
+					} else {
+						argument_nodes.emplace_back(parse_group(argument_tokens.subspan(++last_index, i - last_index)));
+					}
+
+					last_index = i;
+				}
+			}
 		}
 
 		[[nodiscard]] node::group parse_group(const std::span<token> group_tokens) const noexcept {
@@ -368,9 +400,9 @@ namespace rebar {
 						group_parse = false;
 					}
 				} else if (selector_parse) {
-					if (t == separator_type::open_array) {
+					if (t == separator_type::open_selector) {
 						selector_increment++;
-					} else if (t == separator_type::close_array) {
+					} else if (t == separator_type::close_selector) {
 						selector_increment--;
 					} else if (t == separator_type::seek && selector_increment == 1) {
 						ranged_selector_parse = true;
@@ -402,7 +434,7 @@ namespace rebar {
 						group_parse = true;
 						group_index = i + 1;
 						group_increment++;
-					} else if (t == separator_type::open_array) {
+					} else if (t == separator_type::open_selector) {
 						selector_parse = true;
 						selector_index = i + 1;
 						selector_increment++;
