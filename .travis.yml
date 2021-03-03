@@ -17,9 +17,38 @@ addons:
       - g++-7
       - cmake
 
+matrix:
+  include:
+    - os: linux
+      compiler: gcc
+      addons:
+        apt:
+          packages:
+            - g++-7
+      env: COMPILER=gcc
+    - os: linux
+      compiler: clang
+      addons:
+        apt:
+          packages:
+            - clang++-5
+      env: COMPILER=clang++-5.0
+    - os: osx
+      compiler: gcc
+      env: COMPILER=g++-7
+    - os: osx
+      compiler: clang
+      env: COMPILER=clang++-5.0
+
+install:
+  - if ["${TRAVIS_OS_NAME}" == "osx" -a "${COMPILER}" == "g++-7"]; then
+      brew update;
+      travis_wait brew install gcc@7;
+    fi
+
 script:
 - mkdir build
 - cd build
-- cmake ..
+- cmake .. -DCMAKE_CXX_COMPILER=${COMPILER}
 - make
 - ./test64
