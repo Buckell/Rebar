@@ -6,8 +6,16 @@ compiler:
 
 os:
 - linux
-- windows
 - osx
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-7
+      - g++-7
+      - cmake
 
 script:
 - mkdir build
