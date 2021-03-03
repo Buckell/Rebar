@@ -6,6 +6,8 @@ matrix:
       compiler: gcc
       addons:
         apt:
+          sources: 
+            - ubuntu-toolchain-r-test
           packages:
             - g++-7
       env: COMPILER=g++-7
@@ -14,8 +16,8 @@ matrix:
       addons:
         apt:
           packages:
-            - clang++-5
-      env: COMPILER=clang++-5.0
+            - clang++-7
+      env: COMPILER=clang++-7.0
     - os: osx
       compiler: gcc
       env: COMPILER=g++-7
