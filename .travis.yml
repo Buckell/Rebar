@@ -1,13 +1,5 @@
 language: cpp
 
-compiler:
-- gcc
-- clang
-
-os:
-- linux
-- osx
-
 addons:
   apt:
     sources:
@@ -25,7 +17,7 @@ matrix:
         apt:
           packages:
             - g++-7
-      env: COMPILER=gcc
+      env: COMPILER=g++-7
     - os: linux
       compiler: clang
       addons:
