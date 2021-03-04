@@ -17,4 +17,4 @@ else()
     add_definitions(-Wnoexcept)
 endif()
 
-set(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address -fsanitize=undefined")MATRIX_EVAL=""
+set(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address -fsanitize=undefined")
