@@ -105,12 +105,7 @@ namespace Rebar {
         Token(const Type token_type, Data token_data) noexcept : type(token_type), data(std::move(token_data)) {}
         
         template <typename Type_, typename... Args_>
-        constexpr Token(const Type token_type, std::in_place_type_t<Type_>, Args_&&... data_args) noexcept : type(token_type), 
-            data(type == Type::Operator ? std::in_place_type<Operator> :
-            (type == Type::KeyWord ? std::in_place_type<KeyWord> :
-            ((type == Type::StringLiteral || type == Type::Identifier) ? std::in_place_type<std::string_view> :
-            (type == Type::IntegerLiteral ? std::in_place_type<Integer> :
-            (type == Type::FloatLiteral ? std::in_place_type<Float> : std::in_place_type<void>)))), std::forward<Args_>(data_args)...) {}
+        constexpr Token(const Type token_type, std::in_place_type_t<Type_> in_place, Args_&&... data_args) noexcept : type(token_type), data(in_place, std::forward<Args_>(data_args)...) {}
 
         [[nodiscard]] constexpr bool IsOperator() const noexcept {
             return type == Type::Operator;

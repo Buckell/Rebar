@@ -12,7 +12,7 @@ target_include_directories(test64 PUBLIC "${CMAKE_SOURCE_DIR}/src")
 add_definitions(-pthread -Wall -Wextra -Wconversion -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wcast-qual -Wunused -Woverloaded-virtual -Wno-noexcept-type -Wpedantic -fsanitize=address -fsanitize=undefined -g)
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    add_definitions(-Weverything -Wno-c++98-compat-pedantic -Wno-c++98-compat -Wno-documentation -Wno-switch-enum -Wno-weak-vtables -Wno-missing-prototypes -Wno-padded -Wno-missing-noreturn -Wno-exit-time-destructors -Wno-documentation-unknown-command -Wno-unused-template -Wno-undef)
+    add_definitions(-Weverything -Wno-float-equal -Wno-c++98-compat-pedantic -Wno-c++98-compat -Wno-documentation -Wno-switch-enum -Wno-weak-vtables -Wno-missing-prototypes -Wno-padded -Wno-missing-noreturn -Wno-exit-time-destructors -Wno-documentation-unknown-command -Wno-unused-template -Wno-undef)
 else()
     add_definitions(-Wnoexcept)
 endif()
