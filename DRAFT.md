@@ -7,7 +7,7 @@ function RepeatString(to_repeat : string notnull, count : integer notnull = 1, t
     return (string * count)[:truncate];
 }
 
-function Add(value, to_add = 1) {
+local function Add(value, to_add = 1) {
     return value + to_add;
 }
 
