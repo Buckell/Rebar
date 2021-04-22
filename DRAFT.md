@@ -1,20 +1,15 @@
 ```
-function RepeatString(to_repeat : string notnull, count : integer notnull = 1, truncate : integer/null) {
-    if (truncate == null) {
-        throw NoTruncateException "A truncate value must be specified.";
-    }
+// --- VARIABLE DEFINITIONS ---
 
-    return (string * count)[:truncate];
-}
+// Local variables are available for the current scope and nested scopes.
+local variable1 = "This is a local variable.";
 
-local function Add(value, to_add = 1) {
-    return value + to_add;
-}
+// Global variables are available for the entire environment. All scopes and files
+// ran under the same environment will be able to access the variable.
+global variable2 = "This is a global variable.";
 
-local test_string = "Hello, world!";
+local gen = new Random.Generator;
 
-for (local i = 0; i < #test_string; i++) {
-    PrintLn(test_string[i]);
-}
+local randint = gen.RandInt();
 
 ```

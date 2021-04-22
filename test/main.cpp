@@ -2,14 +2,18 @@
 
 #include <rebar.hpp>
 
+#include <emmintrin.h>
+
 int main() {
-    Rebar::Optional<double> opt;
+    rebar::parser parser;
 
-    opt = new double{ 3 };
+    std::vector<rebar::token> tokens = parser.lex("PrintLn(\"Hello, world!\");");
 
-    std::cout << *opt << std::endl;
+    parser.print_tokens(tokens);
 
-    std::vector<char> data;
+    rebar::parse_unit unit = parser.parse("PrintLn(\"Hello, world!\");");
+
+   std::cout << unit.string_representation() << std::endl;
 
     return 0;
 }
