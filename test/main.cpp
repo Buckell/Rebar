@@ -13,7 +13,7 @@ int main() {
 
     rebar::parse_unit unit = parser.parse("PrintLn(\"Hello, world!\");");
 
-   std::cout << unit.string_representation() << std::endl;
+    std::cout << unit.string_representation() << std::endl;
 
     return 0;
 }

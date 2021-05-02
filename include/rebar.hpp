@@ -1,7 +1,6 @@
-/*
-Copyright (C) 2021 Max Goddard
-All rights reserved.
-*/
+//
+// Copyright (C) 2021 Max Goddard. All rights reserved.
+//
 
 #ifndef INCLUDE_REBAR_H
 #define INCLUDE_REBAR_H
@@ -11,8 +10,10 @@ All rights reserved.
 #include <variant>
 #include <map>
 #include <string_view>
+#include <string>
 #include <vector>
 #include <algorithm>
+#include <limits>
 
 namespace rebar {
     using integer = std::conditional_t<sizeof(size_t) == 8, int64_t, int32_t>;
@@ -194,13 +195,13 @@ namespace rebar {
         data m_data;
 
         token() = delete;
-        token(const type a_token_type, data token_data) noexcept : m_type(a_token_type), m_data(std::move(token_data)) {}
+        token(const type a_token_type, data token_data) noexcept : m_type(a_token_type), m_data(token_data) {}
 
         template <typename t_type, typename... t_args>
         constexpr token(const type a_token_type, std::in_place_type_t<t_type> a_in_place_type, t_args&&... a_args) noexcept : m_type(a_token_type), m_data(a_in_place_type, std::forward<t_args>(a_args)...) {}
 
         token(const token& a_token) = default;
-        token(token&& a_token) noexcept : m_type(a_token.m_type), m_data(std::move(a_token.m_data)) {}
+        token(token&& a_token) noexcept : m_type(a_token.m_type), m_data(a_token.m_data) {}
 
         token& operator=(const token& a_token) noexcept = default;
         token& operator=(token&& a_token) noexcept = default;
@@ -269,6 +270,8 @@ namespace rebar {
                 return get_integer_literal() == rhs.get_integer_literal();
             case type::number_literal:
                 return get_number_literal() == rhs.get_number_literal();
+            default:
+                return false;
             }
         }
 
@@ -605,11 +608,11 @@ namespace rebar {
             return m_size;
         }
 
-        [[nodiscard]] constexpr span<t_type> subspan(const size_t index, const size_t size = 18446744073709551615ULL) noexcept {
+        [[nodiscard]] constexpr span<t_type> subspan(const size_t index, const size_t size = std::numeric_limits<size_t>::max()) noexcept {
             return { m_data + index, std::min(size, m_size - index) };
         }
 
-        [[nodiscard]] constexpr span<t_type> subspan(const size_t index, const size_t size = 18446744073709551615ULL) const noexcept {
+        [[nodiscard]] constexpr span<t_type> subspan(const size_t index, const size_t size = std::numeric_limits<size_t>::max()) const noexcept {
             return { m_data + index, std::min(size, m_size - index) };
         }
 
@@ -652,13 +655,6 @@ namespace rebar {
         using pair_type = std::pair<std::string_view, token>;
 
         symbol_map() noexcept = default;
-
-        symbol_map(const symbol_map& a_symbol_map) noexcept = default;
-        symbol_map(symbol_map&& a_symbol_map) noexcept = default;
-
-        symbol_map& operator=(const symbol_map& a_symbol_map) noexcept = default;
-
-        symbol_map& operator=(symbol_map&& a_symbol_map) noexcept = default;
 
         [[nodiscard]] optional_view<token> get(const std::string_view symbol) noexcept {
             map_type::iterator it{ find(symbol) };
@@ -879,7 +875,7 @@ namespace rebar {
                         : m_identifier(a_identifier), m_tags(a_tags), m_functions(std::move(a_functions)) {}
 
                 class_declaration(const class_declaration& a_decl) = default;
-                class_declaration(class_declaration& a_decl) noexcept = default;
+                class_declaration(class_declaration&& a_decl) noexcept = default;
             };
 
             using data_type = std::variant<std::nullptr_t, const token*, std::vector<node>, ranged_selector, if_declaration, for_declaration, function_declaration, switch_declaration, class_declaration>;
@@ -1296,6 +1292,8 @@ namespace rebar {
                     return parse_unit::node::ranged_selector(parse_group(a_tokens.subspan(0, i - 1)), parse_group(a_tokens.subspan(i + 1)));
                 }
             }
+
+            return parse_unit::node::ranged_selector();
         }
 
         [[nodiscard]] static parse_unit::node::argument_list parse_arguments(const span<token> a_tokens) noexcept {
