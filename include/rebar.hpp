@@ -1087,46 +1087,86 @@ namespace rebar {
             [[nodiscard]] std::string to_string() const noexcept {
                 switch (m_type) {
                 case type::empty:
-                    return "EMPTY";
-                    break;
+                    return "EMPTY; ";
                 case type::token: {
                     const auto& tok = get_token();
 
                     switch (tok.m_type) {
                     case token::type::separator:
-                        return std::string("SEPARATOR: ") + std::string(separator_to_string(tok.get_separator()));
-                        break;
+                        return std::string("SEPARATOR: ") + std::string(separator_to_string(tok.get_separator())) + "; ";
                     case token::type::keyword:
-                        return std::string("KEYWORD: ") + std::string(keyword_to_string(tok.get_keyword()));
-                        break;
+                        return std::string("KEYWORD: ") + std::string(keyword_to_string(tok.get_keyword())) + "; ";
                     case token::type::string_literal:
-                        return std::string("STRING LITERAL: ") + std::string(tok.get_string_literal());
-                        break;
+                        return std::string("STRING LITERAL: ") + std::string(tok.get_string_literal()) + "; ";
                     case token::type::identifier:
-                        return std::string("IDENTIFIER: ") + std::string(tok.get_identifier());
-                        break;
+                        return std::string("IDENTIFIER: ") + std::string(tok.get_identifier()) + "; ";
                     case token::type::integer_literal:
-                        return std::string("INTEGER LITERAL: ") + std::to_string(tok.get_integer_literal());
-                        break;
+                        return std::string("INTEGER LITERAL: ") + std::to_string(tok.get_integer_literal()) + "; ";
                     case token::type::number_literal:
-                        return std::string("NUMBER LITERAL: ") + std::to_string(tok.get_number_literal());
-                        break;
+                        return std::string("NUMBER LITERAL: ") + std::to_string(tok.get_number_literal()) + "; ";
+                    }
+                }
+                case type::statement: {
+                    std::string string = "STATEMENT { ";
+
+                    for (const auto& n : get_statement()) {
+                        string += n.to_string() + "; ";
                     }
 
-                    break;
+                    return string + "}; ";
                 }
-                case type::statement:
-                    break;
-                case type::block:
-                    break;
-                case type::group:
-                    break;
-                case type::selector:
-                    break;
-                case type::ranged_selector:
-                    break;
-                case type::argument_list:
-                    break;
+                case type::block: {
+                    std::string string = "BLOCK { ";
+
+                    for (const auto &n : get_block()) {
+                        string += n.to_string();
+                    }
+
+                    return string + "}; ";
+                }
+                case type::group: {
+                    std::string string = "GROUP { ";
+
+                    for (const auto &n : get_group()) {
+                        string += n.to_string();
+                    }
+
+                    return string + "}; ";
+                }
+                case type::selector: {
+                    std::string string = "SELECTOR { ";
+
+                    for (const auto &n : get_selector()) {
+                        string += n.to_string();
+                    }
+
+                    return string + "}; ";
+                }
+                case type::ranged_selector: {
+                    std::string string = "RANGED SELECTOR { { ";
+                    const auto& ranged_sel = get_ranged_selector();
+
+                    for (const auto& n : ranged_sel.first) {
+                        string += n.to_string();
+                    }
+
+                    string += "}, { ";
+
+                    for (const auto& n : ranged_sel.second) {
+                        string += n.to_string();
+                    }
+
+                    return string + "} }; ";
+                }
+                case type::argument_list: {
+                    std::string string = "ARGUMENT LIST { ";
+
+                    for (const auto &n : get_argument_list()) {
+                        string += n.to_string();
+                    }
+
+                    return string + "}; ";
+                }
                 case type::if_declaration:
                     break;
                 case type::else_if_declaration:
