@@ -1,0 +1,85 @@
+local StringUtility = Include("StringUtility");
+
+local sb = new StringUtility::StringBuilder;
+
+sb.append("Hello,");
+sb.append(" ");
+sb.append("world!");
+
+sb += " A tad extra!";
+
+PrintLn(sb.toString());
+
+tab = {
+    goodbye = "Hey!",
+    dhdhdhd = "Nonsense",
+    something_else = "Not Null"
+};
+
+PrintLn(tab.something_else);
+
+tab.hello = {};
+
+tab.hello.world = "Howdy, world!";
+
+function tab.hello.Print(text) {
+    PrintLn(this.world, "    ", text);
+}
+
+tab.hello.Print("Print text!");
+
+local i = 5;
+
+while (--i) {
+    PrintLn(i);
+    if (i == 2) {
+        break;
+    }
+}
+
+{
+    local scoped = 203;
+    PrintLn(scoped); // 203
+}
+
+PrintLn(scoped); // null
+
+local hello_world = "Hello, world!";
+PrintLn(hello_world[0:2+1]);
+PrintLn(hello_world.length());
+
+//local inp = Input();
+//PrintLn(inp);
+
+local arr = [1, 2, hello_world, 4];
+
+arr += hello_world;
+
+for (local i = 0; i < #arr; ++i) {
+    PrintLn(arr[i]);
+}
+
+PrintLn();
+
+//
+//local function RepPrint(str, tt) {
+//    local tmp = tt;
+//
+//    while (tt--) {
+//        PrintLn(str);
+//    }
+//
+//    return str * tmp;
+//}
+//
+//if (v == "Hi!") {
+//    PrintLn("Francais");
+//} else if (v == "Hello, world!") {
+//    PrintLn("Espagnol", dd);
+//} else {
+//    RepPrint(v, 4);
+//}
+//
+//local ret_value = RepPrint(dd, 4);
+
+// PrintLn(ret_value + (4 * 3 * (4 - 3 * (3 - 1))));

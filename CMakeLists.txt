@@ -19,6 +19,6 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GCC" OR "${CMAKE_CXX_COMPILER_ID}" STREQ
     endif()
 
     set(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address -fsanitize=undefined")
-elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC" AND "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
-    add_definitions(/O2 /W4)
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    add_definitions(/W4)
 endif()
