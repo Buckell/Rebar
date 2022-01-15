@@ -15,6 +15,7 @@
 #include <string_view>
 #include <string>
 #include <vector>
+#include <iostream>
 #include <algorithm>
 #include <limits>
 #include <cstring>
@@ -2766,8 +2767,10 @@ namespace rebar {
                     span<token> iteration_tokens(condition_end + 1, group_end);
 
                     if (*(group_end + 1) == separator::scope_open) {
-                        span<token>::iterator body_end = find_next(span<token>(group_end + 2, a_tokens.end()), separator::scope_close, separator::scope_open, separator::scope_close);
-                        span<token> body_tokens(group_end + 2, body_end);
+                        // For-loop with postceding block.
+
+                        span<token>::iterator block_end = find_next(span<token>(group_end + 2, a_tokens.end()), separator::scope_close, separator::scope_open, separator::scope_close);
+                        span<token> body_tokens(group_end + 2, block_end);
 
                         nodes.emplace_back(parse_unit::node::type::for_declaration, parse_unit::node::for_declaration(
                             parse_group(initialization_tokens),
@@ -2775,6 +2778,22 @@ namespace rebar {
                             parse_group(iteration_tokens),
                             parse_block(body_tokens)
                         ));
+
+                        i += std::distance(block_end, a_tokens.begin() + i);
+                    } else {
+                        // For-loop with postceding statement.
+
+                        span<token>::iterator statement_end = find_next(span<token>(group_end + 1, a_tokens.end()), separator::end_statement, separator::scope_open, separator::scope_close);
+                        span<token> body_tokens(group_end + 1, statement_end);
+
+                        nodes.emplace_back(parse_unit::node::type::for_declaration, parse_unit::node::for_declaration(
+                            parse_group(initialization_tokens),
+                            parse_group(condition_tokens),
+                            parse_group(iteration_tokens),
+                            parse_block(body_tokens)
+                        ));
+
+                        i += std::distance(statement_end, a_tokens.begin() + i);
                     }
                 } else if (tok == keyword::function) {
                     // Function parsing routine.
@@ -3170,7 +3189,7 @@ namespace rebar {
             destructor_function destructor = nullptr;
 
             if constexpr (!std::is_trivially_destructible_v<t_object>) {
-                destructor = [](void* a_obj) noexcept(std::is_nothrow_destructible_v<t_object>) {
+                destructor = [](void* a_obj){
                     reinterpret_cast<t_object*>(a_obj)->~t_object();
                 };
             }
@@ -3346,6 +3365,8 @@ namespace rebar {
         }
 
     public:
+        static constexpr size_t max_display_elements = 100;
+
         array() noexcept : m_root_pointer(nullptr) {}
 
         array(const size_t a_size) {
@@ -3476,6 +3497,8 @@ namespace rebar {
             }
         }
 
+        [[nodiscard]] std::string to_string() noexcept;
+
         void reference() {
             ++reference_count_reference();
 
@@ -3534,6 +3557,7 @@ namespace rebar {
         object(const int a_integer) noexcept : m_type(type::integer), m_data(0) {
             reinterpret_cast<integer&>(m_data) = static_cast<integer>(a_integer);
         }
+        explicit object(const bool a_boolean) noexcept : m_type(type::boolean), m_data(*reinterpret_cast<const size_t*>(&a_boolean)) {}
         object(const function a_function) noexcept : m_type(type::function), m_data(reinterpret_cast<size_t>(a_function.m_data)) {}
         object(const number a_number) noexcept : m_type(type::number), m_data(*reinterpret_cast<const size_t*>(&a_number)) {}
         object(string a_string) noexcept : m_type(type::string), m_data(reinterpret_cast<size_t>(a_string.data())) {
@@ -3703,25 +3727,7 @@ namespace rebar {
         [[nodiscard]] object select(environment& a_environment, const object rhs);
         [[nodiscard]] object select(environment& a_environment, const object rhs1, const object rhs2);
 
-        [[nodiscard]] std::string to_string() const noexcept {
-            switch (m_type) {
-                case type::null:
-                    return "null";
-                case type::boolean:
-                    return m_data != 0 ? "true" : "false";
-                case type::integer:
-                    return std::to_string(static_cast<integer>(m_data));
-                case type::number:
-                    return std::to_string(get_number());
-                case type::string: {
-                    return std::string(get_string().to_string_view());
-                }
-                case type::native_object:
-                    return "NATIVE_OBJECT";
-                default:
-                    return std::to_string(m_data);
-            }
-        }
+        [[nodiscard]] std::string to_string() noexcept;
 
         bool operator == (const type rhs) const noexcept {
             return m_type == rhs;
@@ -3790,7 +3796,7 @@ namespace rebar {
         // TODO: Implement lesser-than-equal-to operations for remaining types.
         static object lesser_than_equal_to(environment& a_environment, object lhs, const object rhs);
 
-        friend std::ostream& operator << (std::ostream& lhs, const object rhs) noexcept {
+        friend std::ostream& operator << (std::ostream& lhs, object rhs) noexcept {
             switch (rhs.m_type) {
                 case type::null:
                     return (lhs << "null");
@@ -3802,6 +3808,8 @@ namespace rebar {
                     return (lhs << rhs.get_number());
                 case type::string:
                     return (lhs << rhs.get_string());
+                case type::array:
+                    return (lhs << rhs.get_array().to_string());
                 case type::native_object:
                     return (lhs << "NATIVE_OBJECT");
                 default:
@@ -3816,6 +3824,18 @@ namespace rebar {
         // TODO: Complete dereference function.
         void dereference(object& a_object);
         void reference(object& a_object);
+
+        [[nodiscard]] bool operator == (const object rhs) const noexcept {
+            if (m_type != rhs.m_type) {
+                return false;
+            }
+
+            if (is_simply_comparable()) {
+                return m_data == rhs.m_data;
+            }
+
+            return false;
+        }
     };
 
     using type = object::type;
@@ -3825,6 +3845,25 @@ namespace rebar {
     void array::push_back(const object a_object) {
         // TODO: Block views.
         vector_reference().push_back(a_object);
+    }
+
+    std::string array::to_string() noexcept {
+        size_t max_elements = std::min(size(), max_display_elements);
+
+        if (max_elements == 0) {
+            return "[]";
+        }
+
+        std::string representation = "[ ";
+
+        for (size_t i = 0; i < max_elements; ++i) {
+            representation += (*this)[i].to_string();
+            representation += (i == max_elements - 1)
+                    ? ((size() > max_display_elements) ? ", ... ]" : " ]")
+                    : ", ";
+        }
+
+        return representation;
     }
 }
 
@@ -4279,6 +4318,7 @@ namespace rebar {
         [[nodiscard]] object call(const void* a_data) override {
             // I know, I know. It should be relatively safe.
             auto* func = const_cast<function_source*>(reinterpret_cast<const function_source*>(a_data));
+
             return func->internal_call();
         }
 
@@ -4337,7 +4377,7 @@ namespace rebar {
         environment() noexcept : m_provider(std::make_unique<default_provider>(*this)), m_arguments(1) {}
 
         template <typename t_provider>
-        explicit environment(const use_provider_t<t_provider> a_) noexcept : m_provider(std::make_unique<t_provider>(*this)), m_arguments(1) {};
+        explicit environment(const use_provider_t<t_provider>) noexcept : m_provider(std::make_unique<t_provider>(*this)), m_arguments(1) {};
 
         environment(const environment&) = delete;
         environment(environment&&) = delete;
@@ -4606,7 +4646,28 @@ namespace rebar {
         }
     }
 
-    object object::add(environment& a_environment, object lhs, const object rhs) {
+    std::string object::to_string() noexcept {
+        switch (m_type) {
+            case type::null:
+                return "null";
+            case type::boolean:
+                return m_data != 0 ? "true" : "false";
+            case type::integer:
+                return std::to_string(static_cast<integer>(m_data));
+            case type::number:
+                return std::to_string(get_number());
+            case type::string:
+                return "\"" + std::string(get_string().to_string_view()) + "\"";
+            case type::array:
+                return get_array().to_string();
+            case type::native_object:
+                return "NATIVE_OBJECT";
+            default:
+                return std::to_string(m_data);
+        }
+    }
+
+    object object::add(environment& a_environment, object lhs, object rhs) {
         switch (lhs.m_type) {
             case type::null:
                 if (rhs.is_string()) {
@@ -4678,7 +4739,13 @@ namespace rebar {
                 }
             case type::string: {
                 std::string result{ lhs.get_string().to_string_view() };
-                result += rhs.to_string();
+
+                if (rhs.is_string()) {
+                    result += rhs.get_string().to_string_view();
+                } else {
+                    result += rhs.to_string();
+                }
+
                 return a_environment.str(result);
             }
             case type::array:
@@ -5396,9 +5463,9 @@ namespace rebar {
                     case token::type::keyword: {
                         switch (tok.get_keyword()) {
                             case keyword::literal_true:
-                                return { true };
+                                return object{ true };
                             case keyword::literal_false:
-                                return { false };
+                                return object{ false };
                             case keyword::literal_null:
                             default:
                                 return null;
@@ -5970,17 +6037,15 @@ namespace rebar {
                             callee = this_object.select(m_environment, detail_resolve_node(expr.get_operand(1), node_tags::identifier_as_string));
                             args.push_back(this_object);
                         }
+                    } else {
+                        callee = resolve_node(callable_node);
                     }
 
                     for (auto it = a_expression.get_operands().begin() + 1; it != a_expression.get_operands().cend(); ++it) {
                         args.push_back(resolve_node(*it));
                     }
 
-                    if (callee) {
-                        return callee.call(m_environment, args);
-                    } else {
-                        return resolve_node(callable_node).call(m_environment, args);
-                    }
+                    return callee.call(m_environment, args);
                 }
                 case separator::new_object:
                     if (a_expression.count() > 1) {

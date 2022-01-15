@@ -83,8 +83,5 @@ int main() {
 
     auto file_func = env.compile_string(file_contents);
     file_func();
-
-    std::cout << "FIN" << std::endl;
-
     return 0;
 }

@@ -55,9 +55,11 @@ local arr = [1, 2, hello_world, 4];
 
 arr += hello_world;
 
-for (local i = 0; i < #arr; ++i) {
-    PrintLn(arr[i]);
+for (local i = 0; i < 100; ++i) {
+    arr += i;
 }
+
+PrintLn(arr);
 
 PrintLn();
 
@@ -83,3 +85,9 @@ PrintLn();
 //local ret_value = RepPrint(dd, 4);
 
 // PrintLn(ret_value + (4 * 3 * (4 - 3 * (3 - 1))));
+
+local untrimmed = "    dfasdfdsaf    ";
+
+PrintLn("TRIM RIGHT: ", ":" + untrimmed.trimRight() + ":");
+PrintLn("TRIM LEFT: ", ":" + untrimmed.trimLeft() + ":");
+PrintLn("TRIM ALL:", ":" + untrimmed.trim() + ":");
