@@ -4657,7 +4657,7 @@ namespace rebar {
             case type::number:
                 return std::to_string(get_number());
             case type::string:
-                return "\"" + std::string(get_string().to_string_view()) + "\"";
+                return std::string(get_string().to_string_view());
             case type::array:
                 return get_array().to_string();
             case type::native_object:
