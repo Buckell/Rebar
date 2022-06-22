@@ -25,9 +25,9 @@ int main() {
 
     )";
 
-    rebar::parser& code_parser = env.code_parser();
+    rebar::lexer& code_lexer = env.code_lexer();
 
-    rebar::lex_unit l_uint = code_parser.lex(test);
+    rebar::lex_unit l_uint = code_lexer.lex(test);
 
     // code_parser.print_tokens(l_uint.tokens());
 
@@ -78,7 +78,7 @@ int main() {
 
     std::string file_contents{ rebar::read_file("../test/test.rbr") };
 
-    rebar::parse_unit p_unit = code_parser.parse(file_contents);
+    rebar::parse_unit p_unit = rebar::parse(code_lexer, file_contents);
     std::cout << p_unit.string_representation() << std::endl;
 
     auto file_func = env.compile_string(file_contents);
