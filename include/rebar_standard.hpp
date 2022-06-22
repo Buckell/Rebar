@@ -241,23 +241,23 @@ namespace rebar::standard {
                 string_table[a_environment.str(a_identifier)] = a_environment.bind(a_function);
             };
 
-            define_string_function("contains",         Contains);
-            define_string_function("endsWith",         EndsWith);
-            define_string_function("equalsIgnoreCase", EqualsIgnoreCase);
-            define_string_function("indexOf",          IndexOf);
-            define_string_function("isEmpty",          IsEmpty);
-            define_string_function("lastIndexOf",      LastIndexOf);
-            define_string_function("length",           Length);
-            define_string_function("matches",          Matches);
-            define_string_function("replace",          Replace);
-            define_string_function("split",            Split);
-            define_string_function("startsWith",       StartsWith);
-            define_string_function("toCharArray",      ToCharArray);
-            define_string_function("toLowerCase",      ToLowerCase);
-            define_string_function("toUpperCase",      ToUpperCase);
-            define_string_function("trim",             Trim);
-            define_string_function("trimLeft",         TrimLeft);
-            define_string_function("trimRight",        TrimRight);
+            define_string_function("Contains",         Contains);
+            define_string_function("EndsWith",         EndsWith);
+            define_string_function("EqualsIgnoreCase", EqualsIgnoreCase);
+            define_string_function("IndexOf",          IndexOf);
+            define_string_function("IsEmpty",          IsEmpty);
+            define_string_function("LastIndexOf",      LastIndexOf);
+            define_string_function("Length",           Length);
+            define_string_function("Matches",          Matches);
+            define_string_function("Replace",          Replace);
+            define_string_function("Split",            Split);
+            define_string_function("StartsWith",       StartsWith);
+            define_string_function("ToCharArray",      ToCharArray);
+            define_string_function("ToLowerCase",      ToLowerCase);
+            define_string_function("ToUpperCase",      ToUpperCase);
+            define_string_function("Trim",             Trim);
+            define_string_function("TrimLeft",         TrimLeft);
+            define_string_function("TrimRight",        TrimRight);
 
             return null;
         }
@@ -281,7 +281,7 @@ namespace rebar::standard {
                 a_this.get_object<std::vector<std::string>>().push_back(rhs.to_string());
             };
 
-            string_builder_virtual_table[a_environment.str("toString")] = a_environment.bind([](environment* env) -> object {
+            string_builder_virtual_table[a_environment.str("ToString")] = a_environment.bind([](environment* env) -> object {
                 object this_object = env->arg(0);
 
                 auto& strings = this_object.get_native_object().get_object<std::vector<std::string>>();
@@ -302,7 +302,7 @@ namespace rebar::standard {
                 return env->str(final);
             });
 
-            string_builder_virtual_table[a_environment.str("append")] = a_environment.bind([](environment* env) -> object {
+            string_builder_virtual_table[a_environment.str("Append")] = a_environment.bind([](environment* env) -> object {
                 object this_object = env->arg(0);
                 object obj = env->arg(1);
 

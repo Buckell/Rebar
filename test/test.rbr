@@ -8,7 +8,7 @@ sb.append("world!");
 
 sb += " A tad extra!";
 
-PrintLn(sb.toString());
+PrintLn(sb.ToString());
 
 tab = {
     goodbye = "Hey!",
@@ -46,7 +46,7 @@ PrintLn(scoped); // null
 
 local hello_world = "Hello, world!";
 PrintLn(hello_world[0:2+1]);
-PrintLn(hello_world.length());
+PrintLn(hello_world.Length());
 
 //local inp = Input();
 //PrintLn(inp);
@@ -88,6 +88,6 @@ PrintLn();
 
 local untrimmed = "    dfasdfdsaf    ";
 
-PrintLn("TRIM RIGHT: ", ":" + untrimmed.trimRight() + ":");
-PrintLn("TRIM LEFT: ", ":" + untrimmed.trimLeft() + ":");
-PrintLn("TRIM ALL:", ":" + untrimmed.trim() + ":");
+PrintLn("TRIM RIGHT: ", ":" + untrimmed.TrimRight() + ":");
+PrintLn("TRIM LEFT: ", ":" + untrimmed.TrimLeft() + ":");
+PrintLn("TRIM ALL:", ":" + untrimmed.Trim() + ":");
