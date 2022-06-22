@@ -4341,6 +4341,9 @@ namespace rebar {
     class environment {
         friend class function;
 
+        size_t m_argument_count;
+        std::array<object, 16> m_arguments;
+
         ska::detailv3::sherwood_v3_table<
             std::pair<std::string_view, string>,
             std::string_view,
@@ -4369,15 +4372,12 @@ namespace rebar {
         std::vector<function> m_functions;
         table m_global_table;
         std::unique_ptr<provider> m_provider;
-        size_t m_argument_stack_position = 0;
-        std::vector<std::vector<object>> m_arguments;
-
 
     public:
-        environment() noexcept : m_provider(std::make_unique<default_provider>(*this)), m_arguments(1) {}
+        environment() noexcept : m_provider(std::make_unique<default_provider>(*this)) {}
 
         template <typename t_provider>
-        explicit environment(const use_provider_t<t_provider>) noexcept : m_provider(std::make_unique<t_provider>(*this)), m_arguments(1) {};
+        explicit environment(const use_provider_t<t_provider>) noexcept : m_provider(std::make_unique<t_provider>(*this)) {};
 
         environment(const environment&) = delete;
         environment(environment&&) = delete;
@@ -4496,41 +4496,29 @@ namespace rebar {
         // FUNCTION PARAMETERS
 
         [[nodiscard]] size_t arg_count() const noexcept {
-            return m_arguments[m_argument_stack_position].size();
+            return m_argument_count;
         }
 
         [[nodiscard]] object arg(const size_t a_index) const noexcept {
-            return (a_index < arg_count()) ? m_arguments[m_argument_stack_position][a_index] : null;
+            return m_arguments[a_index];
         }
 
-        void set_arg(const size_t a_index, const object a_object) {
-            if (m_arguments[m_argument_stack_position].size() > a_index) {
-                m_arguments[m_argument_stack_position][a_index] = a_object;
-            } else {
-                m_arguments[m_argument_stack_position].reserve(a_index + 1);
-                m_arguments[m_argument_stack_position].emplace(m_arguments[m_argument_stack_position].end() + a_index, a_object);
-            }
+        void push_arg(const object a_object) {
+            m_arguments[m_argument_count] = a_object;
+            ++m_argument_count;
         }
 
         void set_args(const span<object> a_objects) {
-            std::copy(a_objects.begin(), a_objects.end(), std::back_inserter(m_arguments[m_argument_stack_position]));
+            std::copy_n(a_objects.begin(), a_objects.size(), m_arguments.begin());
+            m_argument_count = a_objects.size();
+        }
+
+        [[nodiscard]] auto& get_args() const noexcept {
+            return m_arguments;
         }
 
         void clear_args() noexcept {
-            m_arguments[m_argument_stack_position].clear();
-        }
-
-        void inc_arg_stack() noexcept {
-            m_argument_stack_position++;
-
-            if (m_arguments.size() <= m_argument_stack_position) {
-                m_arguments.emplace_back();
-            }
-        }
-
-        void dec_arg_stack() noexcept {
-            m_arguments[m_argument_stack_position].clear();
-            m_argument_stack_position--;
+            m_argument_count = 0;
         }
 
         // - FUNCTION PARAMETERS
@@ -4570,7 +4558,7 @@ namespace rebar {
             case type::function:
                 return get_function(a_environment).call(std::forward<t_objects>(a_objects)...);
             case type::native_object: {
-                a_environment.inc_arg_stack();
+                std::array<object, 16> temp = a_environment.get_args();
 
                 if constexpr (sizeof...(a_objects) > 0) {
                     std::vector<object> args{ { std::forward<t_objects>(a_objects)... } };
@@ -4579,7 +4567,7 @@ namespace rebar {
 
                 object result = get_native_object().overload_call(a_environment);
 
-                a_environment.dec_arg_stack();
+                a_environment.set_args(temp);
 
                 return result;
             }
@@ -4593,12 +4581,13 @@ namespace rebar {
             case type::function:
                 return get_function(a_environment).call(a_objects);
             case type::native_object: {
-                a_environment.inc_arg_stack();
+                std::array<object, 16> temp = a_environment.get_args();
+
                 a_environment.set_args(a_objects);
 
                 object result = get_native_object().overload_call(a_environment);
 
-                a_environment.dec_arg_stack();
+                a_environment.set_args(temp);
 
                 return result;
             }
@@ -4611,7 +4600,7 @@ namespace rebar {
     object object::new_object(environment& a_environment, t_objects&&... a_objects) {
         switch (m_type) {
             case type::native_object: {
-                a_environment.inc_arg_stack();
+                std::array<object, 16> temp = a_environment.get_args();
 
                 if constexpr (sizeof...(a_objects) > 0) {
                     std::vector<object> args{ { std::forward<t_objects>(a_objects)... } };
@@ -4620,7 +4609,7 @@ namespace rebar {
 
                 object result = get_native_object().overload_new(a_environment);
 
-                a_environment.dec_arg_stack();
+                a_environment.set_args(temp);
 
                 return result;
             }
@@ -4632,12 +4621,13 @@ namespace rebar {
     object object::new_object(environment& a_environment, const span<object> a_objects) {
         switch (m_type) {
             case type::native_object: {
-                a_environment.inc_arg_stack();
+                std::array<object, 16> temp = a_environment.get_args();
+
                 a_environment.set_args(a_objects);
 
                 object result = get_native_object().overload_new(a_environment);
 
-                a_environment.dec_arg_stack();
+                a_environment.set_args(temp);
 
                 return result;
             }
@@ -5395,7 +5385,7 @@ namespace rebar {
 
     template <typename... t_objects>
     object function::call(t_objects&&... a_objects) {
-        m_environment.inc_arg_stack();
+        std::array<object, 16> temp = m_environment.get_args();
 
         if constexpr (sizeof...(a_objects) > 0) {
             std::vector<object> args{{ std::forward<t_objects>(a_objects)... }};
@@ -5404,18 +5394,19 @@ namespace rebar {
 
         object res = m_environment.m_provider->call(m_data);
 
-        m_environment.dec_arg_stack();
+        m_environment.set_args(temp);
 
         return res;
     }
 
     object function::call(const span<object> a_objects) {
-        m_environment.inc_arg_stack();
+        std::array<object, 16> temp = m_environment.get_args();
+
         m_environment.set_args(a_objects);
 
         object res = m_environment.m_provider->call(m_data);
 
-        m_environment.dec_arg_stack();
+        m_environment.set_args(temp);
 
         return res;
     }
