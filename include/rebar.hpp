@@ -32,6 +32,5 @@
 #include "rebar/table.hpp"
 #include "rebar/token.hpp"
 #include "rebar/utility.hpp"
-#include "rebar/zip.hpp"
 
 #endif // #ifndef INCLUDE_REBAR_H

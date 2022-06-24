@@ -409,6 +409,7 @@ namespace rebar {
 
             // There is a better, more optimized way to do this.
             // TODO: Optimize this.
+            // TODO: Refactor with zip.
             for (int i = 0; i < tokens.size(); i++) {
                 if (tokens[i] == separator::space) {
                     tokens.erase(tokens.begin() + i);
