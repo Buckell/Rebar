@@ -221,6 +221,8 @@ namespace rebar {
                     a_function
                 })
             }));
+
+            return func;
         }
 
         // FUNCTION PARAMETERS
