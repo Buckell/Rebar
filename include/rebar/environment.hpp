@@ -185,7 +185,7 @@ namespace rebar {
 
             function func = m_provider->compile(punit);
 
-            m_function_infos.emplace(bitcast<size_t>(func.m_data), std::make_unique<function_info>(function_info {
+            emplace_function_info(func, {
                 a_name.has_value() ? a_name.value() : "UNNAMED",
                 a_origin.has_value() ? a_origin.value() : "IMMEDIATE;"s + std::to_string(m_id_stack),
                 m_id_stack,
@@ -196,23 +196,27 @@ namespace rebar {
                     punit.m_lex_unit.source_positions(),
                     punit.m_block
                 })
-            }));
+            });
 
             return func;
         }
 
-        [[nodiscard]] function_info& get_function_info(const function func) noexcept {
-            return *m_function_infos.at(bitcast<size_t>(func.m_data));
+        void emplace_function_info(function a_function, function_info a_function_info) noexcept {
+            m_function_infos.emplace(bitcast<size_t>(a_function.m_data), std::make_unique<function_info>(std::move(a_function_info)));
         }
 
-        [[nodiscard]] function_info& get_function_info(const function func) const noexcept {
-            return *m_function_infos.at(bitcast<size_t>(func.m_data));
+        [[nodiscard]] function_info& get_function_info(const function a_function) noexcept {
+            return *m_function_infos.at(bitcast<size_t>(a_function.m_data));
+        }
+
+        [[nodiscard]] function_info& get_function_info(const function a_function) const noexcept {
+            return *m_function_infos.at(bitcast<size_t>(a_function.m_data));
         }
 
         [[nodiscard]] object bind(callable a_function, std::optional<std::string> a_name = std::nullopt, std::optional<std::string> a_origin = std::nullopt) {
             function func = m_provider->bind(a_function);
 
-            m_function_infos.emplace(bitcast<size_t>(func.m_data), std::make_unique<function_info>(function_info {
+            emplace_function_info(func, {
                 a_name.has_value() ? a_name.value() : "UNNAMED",
                 a_origin.has_value() ? a_origin.value() : "NATIVE;"s + std::to_string(m_id_stack),
                 m_id_stack,
@@ -220,9 +224,13 @@ namespace rebar {
                     {},
                     a_function
                 })
-            }));
+            });
 
             return func;
+        }
+
+        [[nodiscard]] size_t get_current_function_id_stack() const noexcept {
+            return m_id_stack;
         }
 
         // FUNCTION PARAMETERS

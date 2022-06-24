@@ -81,7 +81,7 @@ int main() {
     rebar::parse_unit p_unit = rebar::parse(code_lexer, file_contents);
     std::cout << p_unit.string_representation() << std::endl;
 
-    auto file_func = env.compile_string(file_contents);
+    auto file_func = env.compile_string(file_contents, "TEST FILE MAIN");
     file_func();
     return 0;
 }
