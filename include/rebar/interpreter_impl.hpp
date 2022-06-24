@@ -760,7 +760,7 @@ namespace rebar {
                         function func { m_environment, reinterpret_cast<void*>(env_interpreter.m_function_sources.back().get()) };
 
                         m_environment.emplace_function_info(func, {
-                                decl.m_identifier.to_string(),
+                                decl.m_identifier.to_string(), // TODO: Generate "useful" name for functions.
                                 "REBAR INTERNAL;"s + std::to_string(m_environment.get_current_function_id_stack()),
                                 m_environment.get_current_function_id_stack(),
                                 {} // TODO: Implement full function info for interpreter functions.
