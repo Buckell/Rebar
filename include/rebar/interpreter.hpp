@@ -57,9 +57,8 @@ namespace rebar {
 
         explicit interpreter(environment& a_environment) noexcept : m_environment(a_environment) {}
 
-        [[nodiscard]] function compile(parse_unit a_unit) override {
-            m_parse_units.push_back(std::make_unique<parse_unit>(std::move(a_unit)));
-            m_function_sources.emplace_back(dynamic_cast<function_source*>(new interpreted_function_source(m_environment, node::argument_list(), m_parse_units.back()->m_block)));
+        [[nodiscard]] function compile(parse_unit& a_unit) override {
+            m_function_sources.emplace_back(dynamic_cast<function_source*>(new interpreted_function_source(m_environment, node::argument_list(), a_unit.m_block)));
             return { m_environment, m_function_sources.back().get() };
         }
 
@@ -78,7 +77,6 @@ namespace rebar {
     private:
         environment& m_environment;
         size_t m_argument_stack_position = 0;
-        std::vector<std::unique_ptr<parse_unit>> m_parse_units;
         std::vector<std::unique_ptr<function_source>> m_function_sources;
     };
 }

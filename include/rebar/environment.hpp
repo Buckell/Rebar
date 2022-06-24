@@ -6,6 +6,7 @@
 #define REBAR_ENVIRONMENT_HPP
 
 #include <array>
+#include <optional>
 
 #include "object.hpp"
 #include "preprocess.hpp"
@@ -24,6 +25,8 @@ namespace rebar {
     inline constexpr use_provider_t<t_provider> use_provider{};
 
     using default_provider = interpreter;
+
+    using namespace std::literals::string_literals;
 
     class environment {
         friend class function;
@@ -56,9 +59,12 @@ namespace rebar {
         > m_native_class_table; // Ditto.
 
         lexer m_lexer;
+        std::vector<std::unique_ptr<parse_unit>> m_parse_units;
         std::vector<function> m_functions;
+        std::map<size_t, std::unique_ptr<function_info>> m_function_infos;
         table m_global_table;
         std::unique_ptr<provider> m_provider;
+        size_t m_id_stack;
 
     public:
         environment() noexcept : m_provider(std::make_unique<default_provider>(*this)) {}
@@ -172,8 +178,28 @@ namespace rebar {
             return native_object::create<t_object>(get_native_class(a_identifier), a_in_place, std::forward<t_args>(a_args)...);
         }
 
-        [[nodiscard]] function compile_string(std::string a_string) {
-            return m_provider->compile(parse(m_lexer, std::move(a_string)));
+        [[nodiscard]] function compile_string(std::string a_string, std::optional<std::string> a_name = std::nullopt, std::optional<std::string> a_origin = std::nullopt) {
+            m_parse_units.push_back(std::make_unique<parse_unit>(parse(m_lexer, std::move(a_string))));
+
+            parse_unit& punit = *m_parse_units.back();
+
+            function func = m_provider->compile(punit);
+
+            m_function_infos.emplace(bitcast<size_t>(func.m_data), std::make_unique<function_info>(function_info {
+                a_name.has_value() ? a_name.value() : "IMMEDIATE"s + std::to_string(m_id_stack),
+                a_origin.has_value() ? a_origin.value() : "IMMEDIATE;"s + std::to_string(m_id_stack),
+                m_id_stack,
+                punit.m_plaintext,
+                punit.m_lex_unit.tokens(),
+                punit.m_lex_unit.source_positions(),
+                punit.m_block
+            }));
+
+            return func;
+        }
+
+        [[nodiscard]] function_info& get_function_info(const function func) const noexcept {
+            return *m_function_infos.at(bitcast<size_t>(func.m_data));
         }
 
         [[nodiscard]] object bind(callable a_function) {

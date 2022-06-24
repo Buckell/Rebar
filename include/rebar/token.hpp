@@ -5,6 +5,8 @@
 #ifndef REBAR_TOKEN_HPP
 #define REBAR_TOKEN_HPP
 
+#include <variant>
+
 namespace rebar {
     struct token {
         enum class type : enum_base {
