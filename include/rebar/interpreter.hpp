@@ -55,7 +55,7 @@ namespace rebar {
             object internal_call() override;
         };
 
-        explicit interpreter(environment& a_environment) noexcept : m_environment(a_environment), m_arguments(1) {}
+        explicit interpreter(environment& a_environment) noexcept : m_environment(a_environment) {}
 
         [[nodiscard]] function compile(parse_unit a_unit) override {
             m_parse_units.push_back(std::make_unique<parse_unit>(std::move(a_unit)));
@@ -78,7 +78,6 @@ namespace rebar {
     private:
         environment& m_environment;
         size_t m_argument_stack_position = 0;
-        std::vector<std::vector<object>> m_arguments;
         std::vector<std::unique_ptr<parse_unit>> m_parse_units;
         std::vector<std::unique_ptr<function_source>> m_function_sources;
     };
