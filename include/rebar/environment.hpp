@@ -186,24 +186,41 @@ namespace rebar {
             function func = m_provider->compile(punit);
 
             m_function_infos.emplace(bitcast<size_t>(func.m_data), std::make_unique<function_info>(function_info {
-                a_name.has_value() ? a_name.value() : "IMMEDIATE"s + std::to_string(m_id_stack),
+                a_name.has_value() ? a_name.value() : "UNNAMED",
                 a_origin.has_value() ? a_origin.value() : "IMMEDIATE;"s + std::to_string(m_id_stack),
                 m_id_stack,
-                punit.m_plaintext,
-                punit.m_lex_unit.tokens(),
-                punit.m_lex_unit.source_positions(),
-                punit.m_block
+                std::make_unique<function_info_source::rebar>(function_info_source::rebar {
+                    {},
+                    punit.m_plaintext,
+                    punit.m_lex_unit.tokens(),
+                    punit.m_lex_unit.source_positions(),
+                    punit.m_block
+                })
             }));
 
             return func;
+        }
+
+        [[nodiscard]] function_info& get_function_info(const function func) noexcept {
+            return *m_function_infos.at(bitcast<size_t>(func.m_data));
         }
 
         [[nodiscard]] function_info& get_function_info(const function func) const noexcept {
             return *m_function_infos.at(bitcast<size_t>(func.m_data));
         }
 
-        [[nodiscard]] object bind(callable a_function) {
-            return m_provider->bind(a_function);
+        [[nodiscard]] object bind(callable a_function, std::optional<std::string> a_name = std::nullopt, std::optional<std::string> a_origin = std::nullopt) {
+            function func = m_provider->bind(a_function);
+
+            m_function_infos.emplace(bitcast<size_t>(func.m_data), std::make_unique<function_info>(function_info {
+                a_name.has_value() ? a_name.value() : "UNNAMED",
+                a_origin.has_value() ? a_origin.value() : "NATIVE;"s + std::to_string(m_id_stack),
+                m_id_stack,
+                std::make_unique<function_info_source::native>(function_info_source::native {
+                    {},
+                    a_function
+                })
+            }));
         }
 
         // FUNCTION PARAMETERS
