@@ -202,15 +202,15 @@ namespace rebar {
         }
 
         void emplace_function_info(function a_function, function_info a_function_info) noexcept {
-            m_function_infos.emplace(bitcast<size_t>(a_function.m_data), std::make_unique<function_info>(std::move(a_function_info)));
+            m_function_infos.emplace(bit_cast<size_t>(a_function.m_data), std::make_unique<function_info>(std::move(a_function_info)));
         }
 
         [[nodiscard]] function_info& get_function_info(const function a_function) noexcept {
-            return *m_function_infos.at(bitcast<size_t>(a_function.m_data));
+            return *m_function_infos.at(bit_cast<size_t>(a_function.m_data));
         }
 
         [[nodiscard]] function_info& get_function_info(const function a_function) const noexcept {
-            return *m_function_infos.at(bitcast<size_t>(a_function.m_data));
+            return *m_function_infos.at(bit_cast<size_t>(a_function.m_data));
         }
 
         [[nodiscard]] object bind(callable a_function, std::optional<std::string> a_name = std::nullopt, std::optional<std::string> a_origin = std::nullopt) {

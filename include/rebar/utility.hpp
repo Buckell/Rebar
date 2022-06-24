@@ -161,7 +161,7 @@ namespace rebar {
     };
 
     template <typename t_destination, typename t_source>
-    t_destination bitcast(t_source a_source) {
+    t_destination bit_cast(t_source a_source) {
         static_assert(sizeof(t_destination) == sizeof(t_source));
 
         t_destination dest;
