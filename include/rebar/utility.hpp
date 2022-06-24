@@ -159,6 +159,15 @@ namespace rebar {
     public:
         constexpr static bool value = decltype(test<t_type>(0))::value;
     };
+
+    template <typename t_destination, typename t_source>
+    t_destination bitcast(t_source a_source) {
+        static_assert(sizeof(t_destination) == sizeof(t_source));
+
+        t_destination dest;
+        memcpy_s(&dest, sizeof(t_destination), &a_source, sizeof(t_source));
+        return dest;
+    }
 }
 
 #endif //REBAR_UTILITY_HPP
