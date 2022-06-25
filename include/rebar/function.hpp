@@ -67,8 +67,6 @@ namespace rebar {
     namespace function_info_source {
         struct rebar : public source {
             std::string_view m_plaintext_source;
-            span<token> m_token_source;
-            span<source_position> m_token_source_positions;
             node::block m_parse_source;
         };
 

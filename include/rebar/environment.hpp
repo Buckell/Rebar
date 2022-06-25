@@ -192,8 +192,6 @@ namespace rebar {
                 std::make_unique<function_info_source::rebar>(function_info_source::rebar {
                     {},
                     punit.m_plaintext,
-                    punit.m_lex_unit.tokens(),
-                    punit.m_lex_unit.source_positions(),
                     punit.m_block
                 })
             });

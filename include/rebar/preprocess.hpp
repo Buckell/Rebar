@@ -45,7 +45,7 @@ namespace rebar {
         parse_unit unit;
         unit.m_plaintext = std::move(a_string);
         unit.m_lex_unit = std::move(a_lexer.lex(unit.m_plaintext));
-        unit.m_block = parse_block(span<token>(unit.m_lex_unit.tokens()));
+        unit.m_block = parse_block(span<token>(unit.m_lex_unit.tokens()), unit.m_lex_unit.source_positions());
 
         return std::move(unit);
     }

@@ -813,7 +813,7 @@ namespace rebar {
 
         for (size_t i = 0; i < m_arguments.size(); ++i) {
             const auto& arg = m_arguments[i];
-            const auto& identifier = *(arg.get_operands().end() - 1);
+            const auto& identifier = arg.is_token() ? arg : *(arg.get_expression().get_operands().end() - 1);
 
             if (identifier.is_token()) {
                 const auto& tok = identifier.get_token();

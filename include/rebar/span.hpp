@@ -121,6 +121,8 @@ namespace rebar {
         const size_t m_size;
 
     public:
+        constexpr span() noexcept : m_data(nullptr), m_size(0) {}
+
         constexpr span(const t_type* a_data, const size_t a_size) noexcept : m_data(a_data), m_size(a_size) {}
 
         template <size_t c_size>

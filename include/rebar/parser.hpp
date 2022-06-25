@@ -107,8 +107,8 @@ namespace rebar {
         using expression = abstract_syntax_tree;
         using group = expression;
         using selector = expression;
-        using ranged_selector = std::pair<expression, expression>;
-        using argument_list = std::vector<expression>;
+        using ranged_selector = std::vector<node>;
+        using argument_list = std::vector<node>;
         using return_statement = expression;
         using immediate_array = std::vector<node>;
 
@@ -199,16 +199,18 @@ namespace rebar {
             immediate_table(immediate_table&& a_decl) noexcept = default;
         };
 
-        using data_type = std::variant<std::nullptr_t, const token*, expression, std::vector<node>, argument_list, ranged_selector, if_declaration, for_declaration, function_declaration, switch_declaration, class_declaration, immediate_table>;
+        using data_type = std::variant<std::nullptr_t, const token*, expression, std::vector<node>, if_declaration, for_declaration, function_declaration, switch_declaration, class_declaration, immediate_table>;
 
         type m_type;
         data_type m_data;
+        span<token> m_tokens;
+        span<source_position> m_source_positions;
 
         node() noexcept : m_type(type::empty), m_data(nullptr) {}
-        node(const type a_type, data_type a_data) noexcept : m_type(a_type), m_data(std::move(a_data)) {}
+        node(const span<token> a_tokens, const span<source_position> a_source_positions, const type a_type, data_type a_data) noexcept : m_tokens(a_tokens), m_source_positions(a_source_positions), m_type(a_type), m_data(std::move(a_data)) {}
 
         template <typename t_type, typename... t_args>
-        node(const type a_type, std::in_place_type_t<t_type> a_in_place_type, t_args... a_args) noexcept : m_type(a_type), m_data(a_in_place_type, std::forward<t_args>(a_args)...) {}
+        node(const span<token> a_tokens, const span<source_position> a_source_positions, const type a_type, std::in_place_type_t<t_type> a_in_place_type, t_args... a_args) noexcept : m_tokens(a_tokens), m_source_positions(a_source_positions), m_type(a_type), m_data(a_in_place_type, std::forward<t_args>(a_args)...) {}
 
         node(const node& a_node) = default;
         node(node&& a_node) noexcept = default;
@@ -464,7 +466,7 @@ namespace rebar {
                 }
                 case type::ranged_selector: {
                     const auto& range = get_ranged_selector();
-                    return std::string{ "RANGED SELECTOR { " } + range.first.to_string() + range.second.to_string() + "}; ";
+                    return std::string{ "RANGED SELECTOR { " } + range[0].to_string() + range[1].to_string() + "}; ";
                 }
                 case type::argument_list: {
                     std::string string{ "ARGUMENT LIST { " };
@@ -722,10 +724,10 @@ namespace rebar {
     }
     */
 
-    [[nodiscard]] node::group parse_group(const span<token> a_tokens) noexcept;
+    [[nodiscard]] node::group parse_group(const span<token> a_tokens, const span<source_position> a_source_positions) noexcept;
 
-    [[nodiscard]] node::argument_list parse_arguments(const span<token> a_tokens) noexcept {
-        std::vector<node::group> groups;
+    [[nodiscard]] node::argument_list parse_arguments(const span<token> a_tokens, const span<source_position> a_source_positions) noexcept {
+        std::vector<node> groups;
 
         span<token>::iterator last_token = a_tokens.begin();
 
@@ -733,13 +735,24 @@ namespace rebar {
             span<token>::iterator next_token = find_next(a_tokens.subspan(i), separator::list, separator::group_open, separator::group_close);
 
             if (next_token == a_tokens.end()) {
-                groups.emplace_back(parse_group(a_tokens.subspan(i)));
+                groups.emplace_back(
+                    a_tokens.subspan(i),
+                    a_source_positions.subspan(i),
+                    node::type::expression,
+                    parse_group(a_tokens.subspan(i), a_source_positions.subspan(i))
+                );
+
                 break;
             }
 
             span<token>::iterator::difference_type difference = std::distance(next_token, last_token);
 
-            groups.emplace_back(parse_group(a_tokens.subspan(i, difference)));
+            groups.emplace_back(
+                a_tokens.subspan(i, difference),
+                a_source_positions.subspan(i, difference),
+                node::type::expression,
+                parse_group(a_tokens.subspan(i, difference), a_source_positions.subspan(i, difference))
+            );
 
             i += difference;
 
@@ -821,7 +834,7 @@ namespace rebar {
                 ast.add_operand(a_nodes[0]);
 
                 for (const auto& arg : a_nodes[1].get_argument_list()) {
-                    ast.add_operand({ node::type::expression, arg });
+                    ast.add_operand(arg);
                 }
 
                 return ast;
@@ -829,7 +842,12 @@ namespace rebar {
                 return {
                         separator::operation_index,
                         a_nodes[0],
-                        { node::type::expression, a_nodes[1].get_selector() }
+                        {
+                            a_nodes[1].m_tokens,
+                            a_nodes[1].m_source_positions,
+                            node::type::expression,
+                            a_nodes[1].get_selector()
+                        }
                 };
             } else if (a_nodes[1].is_ranged_selector()) {
                 node::abstract_syntax_tree ast{ separator::operation_index };
@@ -837,8 +855,8 @@ namespace rebar {
 
                 const auto& ranged = a_nodes[1].get_ranged_selector();
 
-                ast.add_operand({ node::type::expression, ranged.first });
-                ast.add_operand({ node::type::expression, ranged.second });
+                ast.add_operand(ranged[0]);
+                ast.add_operand(ranged[1]);
 
                 return ast;
             }
@@ -907,9 +925,19 @@ namespace rebar {
             node::abstract_syntax_tree ast{ sep };
 
             if (begin_node.is_token() && begin_node.get_token() == sep) {
-                ast.add_operand(a_nodes.size() == 2 ? end_node : node{ node::type::expression, parse_ast(a_nodes.subspan(1)) });
+                ast.add_operand(a_nodes.size() == 2 ? end_node : node {
+                    span<token>(a_nodes[1].m_tokens.begin(), end_node.m_tokens.end()),
+                    span<source_position>(a_nodes[1].m_source_positions.begin(), end_node.m_source_positions.end()),
+                    node::type::expression,
+                    parse_ast(a_nodes.subspan(1))
+                });
             } else if (end_node.is_token() && end_node.get_token() == sep) {
-                ast.add_operand(a_nodes.size() == 2 ? begin_node : node{ node::type::expression, parse_ast(a_nodes.subspan(0, a_nodes.size() - 1)) });
+                ast.add_operand(a_nodes.size() == 2 ? begin_node : node {
+                    span<token>(begin_node.m_tokens.begin(), (a_nodes.end() - 2)->m_tokens.end()),
+                    span<source_position>(begin_node.m_source_positions.begin(), (a_nodes.end() - 2)->m_source_positions.end()),
+                    node::type::expression,
+                    parse_ast(a_nodes.subspan(0, a_nodes.size() - 1))
+                });
             }
 
             return ast;
@@ -918,13 +946,18 @@ namespace rebar {
         if ((end_node.is_group() || end_node.is_selector() || end_node.is_ranged_selector() || end_node.is_expression() || end_node.is_argument_list()) && !((a_nodes.end() - 2)->is_token() && (a_nodes.end() - 2)->get_token().is_separator())) {
             if (min_precedence >= get_separator_info(separator::group_open).precedence()) {
                 span<node> lhs_nodes(a_nodes.begin(), a_nodes.end() - 1);
-                node lhs = (lhs_nodes.size() == 1) ? lhs_nodes[0] : node(node::type::expression, parse_ast(lhs_nodes));
+                node lhs = (lhs_nodes.size() == 1) ? lhs_nodes[0] : node {
+                    span<token>(lhs_nodes.begin()->m_tokens.begin(), (lhs_nodes.end() - 1)->m_tokens.end()),
+                    span<source_position>(lhs_nodes.begin()->m_source_positions.begin(), (lhs_nodes.end() - 1)->m_source_positions.end()),
+                    node::type::expression,
+                    parse_ast(lhs_nodes)
+                };
 
                 if (end_node.is_group()) {
                     return {
-                            separator::operation_call,
-                            lhs,
-                            end_node
+                        separator::operation_call,
+                        lhs,
+                        end_node
                     };
                 } else if (end_node.is_argument_list()) {
                     const auto& args = end_node.get_argument_list();
@@ -934,15 +967,15 @@ namespace rebar {
                     ast.add_operand(lhs);
 
                     for (const auto& arg : args) {
-                        ast.add_operand({ node::type::expression, arg });
+                        ast.add_operand(arg);
                     }
 
                     return ast;
                 } else if (end_node.is_selector()) {
                     return {
-                            separator::operation_index,
-                            lhs,
-                            end_node
+                        separator::operation_index,
+                        lhs,
+                        end_node
                     };
                 } else if (end_node.is_ranged_selector()) {
                     const auto& ranged = end_node.get_ranged_selector();
@@ -950,8 +983,8 @@ namespace rebar {
                     node::abstract_syntax_tree ast{ separator::operation_index };
 
                     ast.add_operand(lhs);
-                    ast.add_operand({ node::type::expression, ranged.first });
-                    ast.add_operand({ node::type::expression, ranged.second });
+                    ast.add_operand(ranged[0]);
+                    ast.add_operand(ranged[1]);
 
                     return ast;
                 }
@@ -961,7 +994,12 @@ namespace rebar {
         span<node> lhs_nodes(a_nodes.begin(), min_separator_it);
         span<node> rhs_nodes(min_separator_it + 1, a_nodes.end());
 
-        node lhs = lhs_nodes.size() == 1 ? lhs_nodes[0] : node{ node::type::expression, parse_ast(lhs_nodes) };
+        node lhs = lhs_nodes.size() == 1 ? lhs_nodes[0] : node {
+            span<token>(lhs_nodes.begin()->m_tokens.begin(), (lhs_nodes.end() - 1)->m_tokens.end()),
+            span<source_position>(lhs_nodes.begin()->m_source_positions.begin(), (lhs_nodes.end() - 1)->m_source_positions.end()),
+            node::type::expression,
+            parse_ast(lhs_nodes)
+        };
 
         if (sep == separator::ternary) {
             node::abstract_syntax_tree ast{ sep };
@@ -985,8 +1023,19 @@ namespace rebar {
             span<node> ternary_lhs_nodes(min_separator_it + 1, ternary_break_find);
             span<node> ternary_rhs_nodes(ternary_break_find + 1, rhs_nodes.end());
 
-            node lhs = ternary_lhs_nodes.size() == 1 ? ternary_lhs_nodes[0] : node{ node::type::expression, parse_ast(ternary_lhs_nodes) };
-            node rhs = ternary_rhs_nodes.size() == 1 ? ternary_rhs_nodes[0] : node{ node::type::expression, parse_ast(ternary_rhs_nodes) };
+            node lhs = ternary_lhs_nodes.size() == 1 ? ternary_lhs_nodes[0] : node {
+                    span<token>(ternary_lhs_nodes.begin()->m_tokens.begin(), (ternary_lhs_nodes.end() - 1)->m_tokens.end()),
+                    span<source_position>(ternary_lhs_nodes.begin()->m_source_positions.begin(), (ternary_lhs_nodes.end() - 1)->m_source_positions.end()),
+                    node::type::expression,
+                parse_ast(ternary_lhs_nodes)
+            };
+
+            node rhs = ternary_rhs_nodes.size() == 1 ? ternary_rhs_nodes[0] : node {
+                span<token>(ternary_rhs_nodes.begin()->m_tokens.begin(), (ternary_rhs_nodes.end() - 1)->m_tokens.end()),
+                span<source_position>(ternary_rhs_nodes.begin()->m_source_positions.begin(), (ternary_rhs_nodes.end() - 1)->m_source_positions.end()),
+                node::type::expression,
+                parse_ast(ternary_rhs_nodes)
+            };
 
             ast.add_operand(lhs);
             ast.add_operand(rhs);
@@ -994,13 +1043,18 @@ namespace rebar {
             return ast;
         }
 
-        node rhs = rhs_nodes.size() == 1 ? rhs_nodes[0] : node{ node::type::expression, parse_ast(rhs_nodes) };
+        node rhs = rhs_nodes.size() == 1 ? rhs_nodes[0] : node{
+            span<token>(rhs_nodes.begin()->m_tokens.begin(), (rhs_nodes.end() - 1)->m_tokens.end()),
+            span<source_position>(rhs_nodes.begin()->m_source_positions.begin(), (rhs_nodes.end() - 1)->m_source_positions.end()),
+            node::type::expression,
+            parse_ast(rhs_nodes)
+        };
 
         return { sep, lhs, rhs };
     }
 
     // Routine to parse groups.
-    [[nodiscard]] node::group parse_group(const span<token> a_tokens) noexcept {
+    [[nodiscard]] node::group parse_group(const span<token> a_tokens, const span<source_position> a_source_positions) noexcept {
         std::vector<node> nodes;
 
         for (size_t i = 0; i < a_tokens.size(); ++i) {
@@ -1009,9 +1063,14 @@ namespace rebar {
             if (tok == separator::group_open) {
                 // Parsing group.
 
+                span<token>::iterator begin_group = a_tokens.begin() + i + 1;
                 span<token>::iterator end_group = find_next(a_tokens.subspan(i + 1), separator::group_close, separator::group_open, separator::group_close);
 
-                span<token> captured_tokens(a_tokens.begin() + i + 1, end_group);
+                span<token> captured_tokens(begin_group, end_group);
+                span<source_position> captured_source_positions = a_source_positions.subspan(i + 1, end_group - begin_group);
+
+                span<token> group_tokens(a_tokens.begin() + i, end_group + 1);
+                span<source_position> group_source_positions = a_source_positions.subspan(i, group_tokens.size());
 
                 span<token>::iterator arg_list_token = find_next(captured_tokens, separator::list, [](const token& a_token) noexcept -> find_next_exclude {
                     if (a_token == separator::group_open || a_token == separator::selector_open || a_token == separator::scope_open) {
@@ -1024,9 +1083,19 @@ namespace rebar {
                 });
 
                 if (arg_list_token != captured_tokens.cend()) {
-                    nodes.emplace_back(node::type::argument_list, parse_arguments(captured_tokens));
+                    nodes.emplace_back(
+                        group_tokens,
+                        group_source_positions,
+                        node::type::argument_list,
+                        parse_arguments(captured_tokens, captured_source_positions)
+                    );
                 } else {
-                    nodes.emplace_back(node::type::group, parse_group(captured_tokens));
+                    nodes.emplace_back(
+                        group_tokens,
+                        group_source_positions,
+                        node::type::group,
+                        parse_group(captured_tokens, captured_source_positions)
+                    );
                 }
 
                 i += std::distance(end_group, a_tokens.begin() + i);
@@ -1036,6 +1105,10 @@ namespace rebar {
                 span<token>::iterator end_selector_token = find_next(a_tokens.subspan(i + 1), separator::selector_close, separator::selector_open, separator::selector_close);
 
                 span<token> captured_tokens(a_tokens.begin() + i + 1, end_selector_token);
+                span<source_position> captured_source_positions = a_source_positions.subspan(i + 1, captured_tokens.size());
+
+                span<token> body_tokens(a_tokens.begin() + i, end_selector_token + 1);
+                span<source_position> body_source_positions = a_source_positions.subspan(i, body_tokens.size());
 
                 const auto find_next_entry = [](const span<token> a_tokens) noexcept -> span<token>::iterator {
                     return find_next(a_tokens, separator::list, [](const token& a_token) -> find_next_exclude {
@@ -1059,14 +1132,28 @@ namespace rebar {
                     span<token>::iterator last_entry = a_tokens.begin() + i + 1;
                     span<token>::iterator entry_end = find_next_entry(span<token>(last_entry, end_selector_token));
 
+                    span<source_position>::iterator last_entry_sp = a_source_positions.begin() + i + 1;
+                    span<source_position>::iterator entry_end_sp = last_entry_sp + (entry_end - last_entry);
+
                     do {
-                        span<token> entry_tokens = span<token>(last_entry, entry_end);
+                        span<token> entry_tokens(last_entry, entry_end);
+                        span<source_position> entry_source_positions(last_entry_sp, entry_end_sp);
 
                         if (!entry_tokens.empty()) {
                             if (entry_tokens.size() == 1) {
-                                array.emplace_back(node::type::token, &entry_tokens[0]);
+                                array.emplace_back(
+                                    entry_tokens,
+                                    entry_source_positions,
+                                    node::type::token,
+                                    &entry_tokens[0]
+                                );
                             } else {
-                                array.emplace_back(node::type::expression, parse_group(entry_tokens));
+                                array.emplace_back(
+                                    entry_tokens,
+                                    entry_source_positions,
+                                    node::type::expression,
+                                    parse_group(entry_tokens, entry_source_positions)
+                                );
                             }
                         }
 
@@ -1079,19 +1166,53 @@ namespace rebar {
                         entry_end = find_next_entry(span<token>(last_entry, end_selector_token));
                     } while (entry_end != last_entry);
 
-                    nodes.emplace_back(node::type::immediate_array, std::move(array));
+                    nodes.emplace_back(
+                        body_tokens,
+                        body_source_positions,
+                        node::type::immediate_array,
+                        std::move(array)
+                    );
                 } else {
                     // Selector.
 
                     span<token>::iterator selector_seek = find_next(captured_tokens, separator::seek, separator::selector_open, separator::selector_close);
 
+                    span<token>::iterator selector_begin = a_tokens.begin() + i + 1;
+                    span<token>::iterator secondary_begin = selector_seek + 1;
+
+                    span<token> first_tokens(selector_begin, selector_seek);
+                    span<token> second_tokens(selector_seek + 1, end_selector_token);
+
+                    span<source_position> first_source_positions = a_source_positions.subspan(i + 1, first_tokens.size());
+                    span<source_position> second_source_positions = a_source_positions.subspan(i + 1 + (selector_seek - selector_begin), second_tokens.size());
+
                     if (selector_seek != captured_tokens.cend()) {
-                        nodes.emplace_back(node::type::ranged_selector, node::ranged_selector(
-                                parse_group(span<token>(a_tokens.begin() + i + 1, selector_seek)),
-                                parse_group(span<token>(selector_seek + 1, end_selector_token))
-                        ));
+                        nodes.emplace_back(
+                            body_tokens,
+                            body_source_positions,
+                            node::type::ranged_selector,
+                            node::ranged_selector {{
+                                {
+                                    first_tokens,
+                                    first_source_positions,
+                                    node::type::expression,
+                                    parse_group(first_tokens, first_source_positions)
+                                },
+                                {
+                                    second_tokens,
+                                    second_source_positions,
+                                    node::type::expression,
+                                    parse_group(second_tokens, second_source_positions)
+                                }
+                            }}
+                        );
                     } else {
-                        nodes.emplace_back(node::type::selector, parse_group(captured_tokens));
+                        nodes.emplace_back(
+                            body_tokens,
+                            body_source_positions,
+                            node::type::selector,
+                            parse_group(captured_tokens, captured_source_positions)
+                        );
                     }
                 }
 
@@ -1131,23 +1252,39 @@ namespace rebar {
                 span<token>::iterator entry_end = find_next_entry(span<token>(last_entry, end_scope_token));
 
                 do {
-                    span<token> entry_tokens = span<token>(last_entry, entry_end);
+                    span<token> entry_tokens(last_entry, entry_end);
 
                     if (!entry_tokens.empty()) {
                         span<token>::iterator assignment_token = find_assignment(entry_tokens);
 
+                        span<token> value_tokens(assignment_token + 1, entry_tokens.end());
+                        span<source_position> value_source_positions = a_source_positions.subspan(assignment_token + 1 - a_tokens.begin(), value_tokens.size());
+
                         if (std::distance(assignment_token, last_entry) == 1) {
                             tbl.m_entries.emplace_back(
-                                    node(node::type::token, &*last_entry),
-                                    parse_group(span<token>(assignment_token + 1, entry_tokens.end()))
+                                node {
+                                    span<token>(last_entry, last_entry + 1),
+                                    a_source_positions.subspan(i + 1, 1),
+                                    node::type::token,
+                                    &*last_entry
+                                },
+                                parse_group(value_tokens, value_source_positions)
                             );
                         } else if (entry_tokens[0] == separator::selector_open) {
                             span<token>::iterator key_expression_end = find_next(entry_tokens, separator::selector_close, separator::selector_open, separator::selector_close);
 
+                            span<token> key_tokens(entry_tokens.begin() + 1, key_expression_end);
+                            span<source_position> key_source_positions = a_source_positions.subspan(key_tokens.begin() - a_tokens.begin(), key_tokens.size());
+
                             if (key_expression_end != entry_tokens.cend()) {
                                 tbl.m_entries.emplace_back(
-                                        node(node::type::expression, parse_group(span<token>(assignment_token + 1, entry_tokens.end()))),
-                                        parse_group(span<token>(assignment_token + 1, entry_tokens.end()))
+                                    node {
+                                        key_tokens,
+                                        key_source_positions,
+                                        node::type::expression,
+                                        parse_group(key_tokens, key_source_positions)
+                                    },
+                                parse_group(value_tokens, value_source_positions)
                                 );
                             } else {
                                 // Malformed key expression for immediate table.
@@ -1166,10 +1303,24 @@ namespace rebar {
                     entry_end = find_next_entry(span<token>(last_entry, end_scope_token));
                 } while (entry_end != last_entry);
 
-                nodes.emplace_back(node::type::immediate_table, tbl);
+                span<token> immediate_table_tokens(a_tokens.begin() + i, end_scope_token);
+                span<source_position> immediate_table_source_positions = a_source_positions.subspan(i, immediate_table_tokens.size());
+
+                nodes.emplace_back(
+                    immediate_table_tokens,
+                    immediate_table_source_positions,
+                    node::type::immediate_table,
+                    tbl
+                );
+
                 i += std::distance(end_scope_token, a_tokens.begin() + 1);
             } else {
-                nodes.emplace_back(node::type::token, &tok);
+                nodes.emplace_back(
+                    a_tokens.subspan(i, 1),
+                    a_source_positions.subspan(i, 1),
+                    node::type::token,
+                    &tok
+                );
             }
         }
 
@@ -1177,7 +1328,7 @@ namespace rebar {
     }
 
     // Routine to parse a block.
-    [[nodiscard]] node::block parse_block(const span<token> a_tokens) noexcept {
+    [[nodiscard]] node::block parse_block(const span<token> a_tokens, const span<source_position> a_source_positions) noexcept {
         std::vector<node> nodes;
 
         bool flag_constant = false;
@@ -1193,7 +1344,8 @@ namespace rebar {
 
                 // Ensure conditional is closed.
                 if (group_close_find != a_tokens.cend()) {
-                    span<token> conditional_tokens{ a_tokens.begin() + i + 2, group_close_find };
+                    span<token> conditional_tokens(a_tokens.begin() + i + 2, group_close_find);
+                    span<source_position> conditional_source_positions = a_source_positions.subspan(i + 2, conditional_tokens.size());
 
                     if (*(group_close_find + 1) == separator::scope_open) {
                         // Regular "if" with postceding block.
@@ -1204,7 +1356,21 @@ namespace rebar {
                         if (block_end_find != a_tokens.cend()) {
                             // Block bounds located.
 
-                            nodes.emplace_back(node::type::if_declaration, node::if_declaration(parse_group(conditional_tokens), parse_block(span<token>(group_close_find + 2, block_end_find))));
+                            span<token> body_tokens(group_close_find + 2, block_end_find);
+                            span<source_position> body_source_positions(conditional_source_positions.end() + 2, conditional_source_positions.end() + 2 + body_tokens.size());
+
+                            span<token> if_statement_tokens(a_tokens.begin() + i, block_end_find + 1);
+                            span<source_position> if_statement_source_positions = a_source_positions.subspan(i, if_statement_tokens.size());
+
+                            nodes.emplace_back(
+                                if_statement_tokens,
+                                if_statement_source_positions,
+                                node::type::if_declaration,
+                                node::if_declaration(
+                                    parse_group(conditional_tokens, conditional_source_positions),
+                                    parse_block(body_tokens, body_source_positions)
+                                )
+                            );
 
                             i += std::distance(block_end_find, a_tokens.begin() + i);
                         } else {
@@ -1221,7 +1387,26 @@ namespace rebar {
                         if (statement_end != a_tokens.cend()) {
                             // Statement bounds located.
 
-                            nodes.emplace_back(node::type::if_declaration, node::if_declaration(parse_group(conditional_tokens), { { node::type::expression, parse_group(span<token>(group_close_find + 2, statement_end)) } }));
+                            span<token> statement_tokens(group_close_find + 2, statement_end);
+                            span<source_position> statement_source_positions(conditional_source_positions.end() + 2, conditional_source_positions.end() + 2 + statement_tokens.size());
+
+                            span<token> if_statement_tokens(a_tokens.begin() + i, statement_end + 1);
+                            span<source_position> if_statement_source_positions = a_source_positions.subspan(i, if_statement_tokens.size());
+
+                            nodes.emplace_back(
+                                if_statement_tokens,
+                                if_statement_source_positions,
+                                node::type::if_declaration,
+                                node::if_declaration(
+                                    parse_group(conditional_tokens, conditional_source_positions),
+                                    {{
+                                        statement_tokens,
+                                        statement_source_positions,
+                                        node::type::expression,
+                                        parse_group(statement_tokens, statement_source_positions)
+                                    }}
+                                )
+                            );
 
                             i += std::distance(statement_end, a_tokens.begin() + i);
                         } else {
@@ -1247,7 +1432,8 @@ namespace rebar {
 
                         // Ensure the conditional is closed.
                         if (group_close_find != a_tokens.cend()) {
-                            span<token> conditional_tokens{ a_tokens.begin() + i + 3, group_close_find };
+                            span<token> conditional_tokens(a_tokens.begin() + i + 3, group_close_find);
+                            span<source_position> conditional_source_positions = a_source_positions.subspan(i + 3, conditional_tokens.size());
 
                             if (*(group_close_find + 1) == separator::scope_open) {
                                 // Regular "else if" with postceding block.
@@ -1258,7 +1444,21 @@ namespace rebar {
                                 if (block_end_find != a_tokens.cend()) {
                                     // Block bounds located.
 
-                                    nodes.emplace_back(node::type::else_if_declaration, node::else_if_declaration(parse_group(conditional_tokens), parse_block(span<token>(group_close_find + 2, block_end_find))));
+                                    span<token> body_tokens(group_close_find + 2, block_end_find);
+                                    span<source_position> body_source_positions(conditional_source_positions.end() + 2, conditional_source_positions.end() + 2 + body_tokens.size());
+
+                                    span<token> else_statement_tokens(a_tokens.begin() + i, block_end_find + 1);
+                                    span<source_position> else_statement_source_positions = a_source_positions.subspan(i, else_statement_tokens.size());
+
+                                    nodes.emplace_back(
+                                        else_statement_tokens,
+                                        else_statement_source_positions,
+                                        node::type::else_if_declaration,
+                                        node::else_if_declaration(
+                                            parse_group(conditional_tokens, conditional_source_positions),
+                                            parse_block(body_tokens, body_source_positions)
+                                        )
+                                    );
 
                                     i += std::distance(block_end_find, a_tokens.begin() + i);
                                 } else {
@@ -1275,7 +1475,26 @@ namespace rebar {
                                 if (statement_end != a_tokens.cend()) {
                                     // Statement bounds located.
 
-                                    nodes.emplace_back(node::type::else_if_declaration, node::else_if_declaration(parse_group(conditional_tokens), { { node::type::expression, parse_group(span<token>(group_close_find + 2, statement_end)) } }));
+                                    span<token> statement_tokens(group_close_find + 2, statement_end);
+                                    span<source_position> statement_source_positions(conditional_source_positions.end() + 2, conditional_source_positions.end() + 2 + statement_tokens.size());
+
+                                    span<token> else_statement_tokens(a_tokens.begin() + i, statement_end + 1);
+                                    span<source_position> else_statement_source_positions = a_source_positions.subspan(i, else_statement_tokens.size());
+
+                                    nodes.emplace_back(
+                                        else_statement_tokens,
+                                        else_statement_source_positions,
+                                        node::type::else_if_declaration,
+                                        node::else_if_declaration(
+                                        parse_group(conditional_tokens, conditional_source_positions),
+                                            {{
+                                                statement_tokens,
+                                                statement_source_positions,
+                                                node::type::expression,
+                                                parse_group(statement_tokens, statement_source_positions)
+                                            }}
+                                        )
+                                    );
 
                                     i += std::distance(statement_end, a_tokens.begin() + i);
                                 } else {
@@ -1300,8 +1519,19 @@ namespace rebar {
 
                     span<token>::iterator scope_close_find = find_next(a_tokens.subspan(i + 2), separator::scope_close, separator::scope_open, separator::scope_close);
 
+                    span<token> body_tokens(a_tokens.begin() + i + 2, scope_close_find);
+                    span<source_position> body_source_positions = a_source_positions.subspan(i + 2, body_tokens.size());
+
+                    span<token> else_statement_tokens(a_tokens.begin() + i, scope_close_find + 1);
+                    span<source_position> else_statement_source_positions = a_source_positions.subspan(i, else_statement_tokens.size());
+
                     if (scope_close_find != a_tokens.cend()) {
-                        nodes.emplace_back(node::type::else_declaration, parse_block(span<token>(a_tokens.begin() + i + 2, scope_close_find)));
+                        nodes.emplace_back(
+                            else_statement_tokens,
+                            else_statement_source_positions,
+                            node::type::else_declaration,
+                            parse_block(body_tokens, body_source_positions)
+                        );
 
                         i += std::distance(scope_close_find, a_tokens.begin() + i);
                     } else {
@@ -1310,14 +1540,27 @@ namespace rebar {
                         // TODO: Throw incomplete "else" syntax error.
                     }
                 } else {
+                    // Single statement "else if" with postceding statement.
+
                     span<token>::iterator statement_end_find = find_next(a_tokens.subspan(i + 1), separator::end_statement, separator::scope_open, separator::scope_close);
 
                     if (statement_end_find != a_tokens.cend()) {
-                        nodes.emplace_back(node::type::else_declaration, parse_block(span<token>(a_tokens.begin() + i, statement_end_find)));
+                        span<token> statement_tokens(a_tokens.begin() + i + 1, statement_end_find);
+                        span<source_position> statement_source_positions = a_source_positions.subspan(i + 1, statement_tokens.size());
+
+                        span<token> else_statement_tokens(a_tokens.begin() + i, statement_end_find + 1);
+                        span<source_position> else_statement_source_positions = a_source_positions.subspan(i, else_statement_tokens.size());
+
+                        nodes.emplace_back(
+                            else_statement_tokens,
+                            else_statement_source_positions,
+                            node::type::else_declaration,
+                            parse_block(statement_tokens, statement_source_positions)
+                        );
 
                         i += std::distance(statement_end_find, a_tokens.begin() + i);
                     } else {
-                        // Malformed block postceding "else" statement.
+                        // Malformed statement postceding "else" statement.
 
                         // TODO: Throw incomplete "else" syntax error.
                     }
@@ -1327,27 +1570,40 @@ namespace rebar {
 
                 span<token>::iterator group_end = find_next(a_tokens.subspan(i + 2), separator::group_close, separator::group_open, separator::group_close);
                 span<token> group_tokens(a_tokens.begin() + i + 2, group_end);
+                span<source_position> group_source_positions = a_source_positions.subspan(i + 2, group_tokens.size());
 
                 span<token>::iterator initialization_end = find_next(group_tokens, separator::end_statement, separator::scope_open, separator::scope_close);
                 span<token> initialization_tokens(group_tokens.begin(), initialization_end);
+                span<source_position> initialization_source_positions = group_source_positions.subspan(0, initialization_tokens.size());
 
                 span<token>::iterator condition_end = find_next(span<token>(initialization_end + 1, group_end), separator::end_statement, separator::scope_open, separator::scope_close);
                 span<token> condition_tokens(initialization_end + 1, condition_end);
+                span<source_position> condition_source_positions(initialization_source_positions.end(), initialization_source_positions.end() + condition_tokens.size());
 
                 span<token> iteration_tokens(condition_end + 1, group_end);
+                span<source_position> iteration_source_positions(condition_source_positions.end(), group_source_positions.end());
 
                 if (*(group_end + 1) == separator::scope_open) {
                     // For-loop with postceding block.
 
                     span<token>::iterator block_end = find_next(span<token>(group_end + 2, a_tokens.end()), separator::scope_close, separator::scope_open, separator::scope_close);
                     span<token> body_tokens(group_end + 2, block_end);
+                    span<source_position> body_source_positions(group_source_positions.end() + 2, group_source_positions.end() + 2 + body_tokens.size());
 
-                    nodes.emplace_back(node::type::for_declaration, node::for_declaration(
-                            parse_group(initialization_tokens),
-                            parse_group(condition_tokens),
-                            parse_group(iteration_tokens),
-                            parse_block(body_tokens)
-                    ));
+                    span<token> loop_tokens(a_tokens.begin() + i, block_end + 1);
+                    span<source_position> loop_source_positions = a_source_positions.subspan(i, loop_tokens.size());
+
+                    nodes.emplace_back(
+                        loop_tokens,
+                        loop_source_positions,
+                        node::type::for_declaration,
+                        node::for_declaration(
+                            parse_group(initialization_tokens, initialization_source_positions),
+                            parse_group(condition_tokens, condition_source_positions),
+                            parse_group(iteration_tokens, iteration_source_positions),
+                            parse_block(body_tokens, body_source_positions)
+                        )
+                    );
 
                     i += std::distance(block_end, a_tokens.begin() + i);
                 } else {
@@ -1355,23 +1611,32 @@ namespace rebar {
 
                     span<token>::iterator statement_end = find_next(span<token>(group_end + 1, a_tokens.end()), separator::end_statement, separator::scope_open, separator::scope_close);
                     span<token> body_tokens(group_end + 1, statement_end);
+                    span<source_position> body_source_positions(group_source_positions.end() + 1, group_source_positions.end() + 1 + body_tokens.size());
 
-                    nodes.emplace_back(node::type::for_declaration, node::for_declaration(
-                            parse_group(initialization_tokens),
-                            parse_group(condition_tokens),
-                            parse_group(iteration_tokens),
-                            parse_block(body_tokens)
-                    ));
+                    span<token> loop_tokens(a_tokens.begin() + i, statement_end + 1);
+                    span<source_position> loop_source_positions = a_source_positions.subspan(i, loop_tokens.size());
+
+                    nodes.emplace_back(
+                        loop_tokens,
+                        loop_source_positions,
+                        node::type::for_declaration,
+                        node::for_declaration(
+                            parse_group(initialization_tokens, initialization_source_positions),
+                            parse_group(condition_tokens, condition_source_positions),
+                            parse_group(iteration_tokens, iteration_source_positions),
+                            parse_block(body_tokens, body_source_positions)
+                        )
+                    );
 
                     i += std::distance(statement_end, a_tokens.begin() + i);
                 }
             } else if (tok == keyword::function) {
                 // Function parsing routine.
 
-                function_tags tags = (flag_local && flag_constant) ? function_tags::constant
-                                                                   : (flag_constant ? function_tags::global_constant
-                                                                                    : (flag_local ? function_tags::basic
-                                                                                                  : function_tags::global));
+                function_tags tags = (flag_local && flag_constant)
+                        ? function_tags::constant : (flag_constant
+                        ? function_tags::global_constant : (flag_local
+                        ? function_tags::basic : function_tags::global));
 
                 // Includes local/constant flags.
                 size_t flag_correction_offset = static_cast<size_t>(flag_constant) + static_cast<size_t>(flag_local);
@@ -1381,22 +1646,33 @@ namespace rebar {
                 span<token>::iterator group_open_find = find_next(a_tokens.subspan(i + 1), separator::group_open);
 
                 span<token> identifier_tokens(a_tokens.begin() + i - flag_correction_offset, group_open_find);
+                span<source_position> identifier_source_positions = a_source_positions.subspan(i - flag_correction_offset, identifier_tokens.size());
 
                 span<token>::iterator group_close_find = find_next(span<token>(group_open_find + 1, a_tokens.end()), separator::group_close, separator::group_open, separator::group_open);
 
                 span<token> argument_tokens(group_open_find + 1, group_close_find);
+                span<source_position> argument_source_positions(identifier_source_positions.end() + 1, identifier_source_positions.end() + 1 + argument_tokens.size());
 
-                const auto func_identifier = parse_group(identifier_tokens);
-                auto func_args = parse_arguments(argument_tokens);
+                const auto func_identifier = parse_group(identifier_tokens, identifier_source_positions);
+
+                // TODO: Explicit post-refactor integrity check.
+
+                node::argument_list func_args;
 
                 if (func_identifier.get_operation() == separator::dot) {
                     const static token this_token{ token::type::identifier, "this" };
 
-                    node::abstract_syntax_tree ast{ separator::space };
+                    func_args.emplace_back(
+                        span<token> {},
+                        span<source_position> {},
+                        node::type::token,
+                        &this_token
+                    );
+                }
 
-                    ast.add_operand({ node::type::token, &this_token });
-
-                    func_args.insert(func_args.begin(), ast);
+                // TODO: Possible optimization opportunity.
+                for (const auto& arg : parse_arguments(argument_tokens, argument_source_positions)) {
+                    func_args.emplace_back(arg);
                 }
 
                 if (*(group_close_find + 1) == separator::scope_open) {
@@ -1404,7 +1680,23 @@ namespace rebar {
 
                     span<token>::iterator scope_end_find = find_next(span<token>(group_close_find + 2, a_tokens.end()), separator::scope_close, separator::scope_open, separator::scope_close);
 
-                    nodes.emplace_back(node::type::function_declaration, node::function_declaration(func_identifier, tags, func_args, parse_block(span<token>(group_close_find + 2, scope_end_find))));
+                    span<token> body_tokens(group_close_find + 2, scope_end_find);
+                    span<source_position> body_source_positions(argument_source_positions.end() + 2, argument_source_positions.end() + 2 + body_tokens.size());
+
+                    span<token> function_tokens(a_tokens.begin() + i, scope_end_find + 1);
+                    span<source_position> function_source_positions = a_source_positions.subspan(i, function_tokens.size());
+
+                    nodes.emplace_back(
+                        function_tokens,
+                        function_source_positions,
+                        node::type::function_declaration,
+                        node::function_declaration(
+                            func_identifier,
+                            tags,
+                            func_args,
+                            parse_block(body_tokens, body_source_positions)
+                        )
+                    );
 
                     i += std::distance(scope_end_find, a_tokens.begin() + i);
                 } else {
@@ -1412,7 +1704,23 @@ namespace rebar {
 
                     span<token>::iterator end_statement_find = find_next(span<token>(group_close_find + 1, a_tokens.end()), separator::end_statement, separator::scope_open, separator::scope_close);
 
-                    nodes.emplace_back(node::type::function_declaration, node::function_declaration(func_identifier, tags, func_args, parse_block(span<token>(group_close_find + 2, end_statement_find))));
+                    span<token> body_tokens(group_close_find + 1, end_statement_find);
+                    span<source_position> body_source_positions(argument_source_positions.end() + 1, argument_source_positions.end() + 1 + body_tokens.size());
+
+                    span<token> function_tokens(a_tokens.begin() + i, end_statement_find + 1);
+                    span<source_position> function_source_positions = a_source_positions.subspan(i, function_tokens.size());
+
+                    nodes.emplace_back(
+                        function_tokens,
+                        function_source_positions,
+                        node::type::function_declaration,
+                        node::function_declaration(
+                            func_identifier,
+                            tags,
+                            func_args,
+                            parse_block(body_tokens, body_source_positions)
+                        )
+                    );
 
                     i += std::distance(end_statement_find, a_tokens.begin() + i);
                 }
@@ -1423,7 +1731,8 @@ namespace rebar {
 
                 // Ensure conditional is closed.
                 if (group_close_find != a_tokens.cend()) {
-                    span<token> conditional_tokens{ a_tokens.begin() + i + 2, group_close_find };
+                    span<token> conditional_tokens(a_tokens.begin() + i + 2, group_close_find);
+                    span<source_position> conditional_source_positions = a_source_positions.subspan(i + 2, conditional_tokens.size());
 
                     if (*(group_close_find + 1) == separator::scope_open) {
                         // Regular while-loop with postceding block.
@@ -1434,7 +1743,21 @@ namespace rebar {
                         if (block_end_find != a_tokens.cend()) {
                             // Block bounds located.
 
-                            nodes.emplace_back(node::type::while_declaration, node::while_declaration(parse_group(conditional_tokens), parse_block(span<token>(group_close_find + 2, block_end_find))));
+                            span<token> body_tokens(group_close_find + 2, block_end_find);
+                            span<source_position> body_source_positions(conditional_source_positions.end() + 2, conditional_source_positions.end() + 2 + body_tokens.size());
+
+                            span<token> loop_tokens(a_tokens.begin() + i, block_end_find + 1);
+                            span<source_position> loop_source_positions = a_source_positions.subspan(i, loop_tokens.size());
+
+                            nodes.emplace_back(
+                                loop_tokens,
+                                loop_source_positions,
+                                node::type::while_declaration,
+                                node::while_declaration(
+                                    parse_group(conditional_tokens, conditional_source_positions),
+                                    parse_block(body_tokens, body_source_positions)
+                                )
+                            );
 
                             i += std::distance(block_end_find, a_tokens.begin() + i);
                         } else {
@@ -1445,13 +1768,32 @@ namespace rebar {
                     } else {
                         // Single statement while-loop with postceding statement.
 
-                        span<token>::iterator statement_end = find_next(span<token>(group_close_find + 2, a_tokens.end()), separator::end_statement, separator::scope_open, separator::scope_close);
+                        span<token>::iterator statement_end = find_next(span<token>(group_close_find + 1, a_tokens.end()), separator::end_statement, separator::scope_open, separator::scope_close);
+
+                        span<token> body_tokens(group_close_find + 1, statement_end);
+                        span<source_position> body_source_positions(conditional_source_positions.end() + 2, conditional_source_positions.end() + 2 + body_tokens.size());
+
+                        span<token> loop_tokens(a_tokens.begin() + i, statement_end + 1);
+                        span<source_position> loop_source_positions = a_source_positions.subspan(i, loop_tokens.size());
 
                         // Ensure statement has an end.
                         if (statement_end != a_tokens.cend()) {
                             // Statement bounds located.
 
-                            nodes.emplace_back(node::type::while_declaration, node::while_declaration(parse_group(conditional_tokens), { { node::type::expression, parse_group(span<token>(group_close_find + 2, statement_end)) } }));
+                            nodes.emplace_back(
+                                loop_tokens,
+                                loop_source_positions,
+                                node::type::while_declaration,
+                                node::while_declaration(
+                                    parse_group(conditional_tokens, conditional_source_positions),
+                                    {{
+                                        body_tokens,
+                                        body_source_positions,
+                                        node::type::expression,
+                                        parse_group(body_tokens, body_source_positions)
+                                    }}
+                                )
+                            );
 
                             i += std::distance(statement_end, a_tokens.begin() + i);
                         } else {
@@ -1484,19 +1826,40 @@ namespace rebar {
 
                 span<token>::iterator end_statement_find = find_next(a_tokens.subspan(i + 1), separator::end_statement, separator::scope_open, separator::scope_close);
 
-                nodes.emplace_back(node::type::return_statement, parse_group(span<token>(a_tokens.begin() + i + 1, end_statement_find)));
+                span<token> expression_tokens(a_tokens.begin() + i + 1, end_statement_find);
+                span<source_position> expression_source_positions = a_source_positions.subspan(i + 1, expression_tokens.size());
+
+                span<token> statement_tokens(a_tokens.begin() + i, end_statement_find + 1);
+                span<source_position> statement_source_positions = a_source_positions.subspan(i, expression_tokens.size());
+
+                nodes.emplace_back(
+                    statement_tokens,
+                    statement_source_positions,
+                    node::type::return_statement,
+                    parse_group(expression_tokens, expression_source_positions)
+                );
 
                 i += std::distance(end_statement_find, a_tokens.begin() + i);
             } else if (tok == keyword::break_statement) {
                 if (a_tokens[i + 1] == separator::end_statement) {
-                    nodes.emplace_back(node::type::break_statement, std::nullptr_t{});
+                    nodes.emplace_back(
+                        a_tokens.subspan(i, 2),
+                        a_source_positions.subspan(i, 2),
+                        node::type::break_statement,
+                        std::nullptr_t{}
+                    );
                 } else {
                     // Malformed break statement.
                     // TODO: Throw malformed break statement error.
                 }
             } else if (tok == keyword::continue_statement) {
                 if (a_tokens[i + 1] == separator::end_statement) {
-                    nodes.emplace_back(node::type::continue_statement, std::nullptr_t{});
+                    nodes.emplace_back(
+                        a_tokens.subspan(i, 2),
+                        a_source_positions.subspan(i, 2),
+                        node::type::continue_statement,
+                        std::nullptr_t{}
+                    );
                 } else {
                     // Malformed break statement.
                     // TODO: Throw malformed break statement error.
@@ -1514,8 +1877,20 @@ namespace rebar {
 
                 span<token>::iterator block_end = find_next(a_tokens.subspan(i + 1), separator::scope_close, separator::scope_open, separator::scope_close);
 
+                span<token> body_tokens(a_tokens.begin() + i + 1, block_end);
+                span<source_position> body_source_positions = a_source_positions.subspan(i + 1, body_tokens.size());
+
+                span<token> scope_tokens(a_tokens.begin() + i, block_end + 1);
+                span<source_position> scope_source_positions = a_source_positions.subspan(i, body_tokens.size());
+
                 if (block_end != a_tokens.cend()) {
-                    nodes.emplace_back(node::type::block, parse_block(span<token>(a_tokens.begin() + i + 1, block_end)));
+                    nodes.emplace_back(
+                        scope_tokens,
+                        scope_source_positions,
+                        node::type::block,
+                        parse_block(body_tokens, body_source_positions)
+                    );
+
                     i += std::distance(block_end, a_tokens.begin() + i);
                 } else {
                     // Malformed block.
@@ -1531,7 +1906,18 @@ namespace rebar {
                 flag_local = false;
                 flag_constant = false;
 
-                nodes.emplace_back(node::type::expression, parse_group(span<token>(a_tokens.begin() + i - flag_correction_offset, end_statement_find)));
+                span<token> body_tokens(a_tokens.begin() + i - flag_correction_offset, end_statement_find);
+                span<source_position> body_source_positions = a_source_positions.subspan(i - flag_correction_offset, body_tokens.size());
+
+                span<token> statement_tokens(a_tokens.begin() + i - flag_correction_offset, end_statement_find + 1);
+                span<source_position> statement_source_positions = a_source_positions.subspan(i - flag_correction_offset, statement_tokens.size());
+
+                nodes.emplace_back(
+                    statement_tokens,
+                    statement_source_positions,
+                    node::type::expression,
+                    parse_group(body_tokens, body_source_positions)
+                );
 
                 i += std::distance(end_statement_find, a_tokens.begin() + i);
             }
