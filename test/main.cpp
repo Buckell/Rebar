@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include <rebar.hpp>
-#include <rebar_standard.hpp>
+#include "rebar/rebar.hpp"
+#include "rebar/standard.hpp"
 
 #include <emmintrin.h>
 
@@ -72,7 +72,7 @@ int main() {
     //auto i2_func = env.compile_string(input2);
     //i2_func();
 
-    rebar::standard::load_implicit_libraries(env);
+    rebar::library::load_implicit_libraries(env);
 
     //std::cout << n_obj.get_virtual_table()[env.create_string("ToString")].call(env, n_obj) << std::endl;
 

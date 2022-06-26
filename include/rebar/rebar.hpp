@@ -17,6 +17,7 @@
 #include "rebar/interpreter.hpp"
 #include "rebar/interpreter_impl.hpp"
 #include "rebar/lexer.hpp"
+#include "rebar/library.hpp"
 #include "rebar/native_object.hpp"
 #include "rebar/native_object_impl.hpp"
 #include "rebar/object.hpp"
