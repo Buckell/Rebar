@@ -8,6 +8,7 @@
 #include <functional>
 #include <sstream>
 #include <fstream>
+#include <algorithm>
 
 #include "definitions.hpp"
 
@@ -167,6 +168,17 @@ namespace rebar {
         t_destination dest;
         memcpy_s(&dest, sizeof(t_destination), &a_source, sizeof(t_source));
         return dest;
+    }
+
+    std::string repeat_string(std::string_view a_string, size_t a_count) noexcept {
+        std::string str;
+        str.reserve(a_count * a_string.size());
+
+        for (size_t i = 0; i < a_count; ++i) {
+            str += a_string;
+        }
+
+        return str;
     }
 }
 
