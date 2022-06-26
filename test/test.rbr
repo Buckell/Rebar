@@ -2,9 +2,9 @@ local StringUtility = Include("StringUtility");
 
 local sb = new StringUtility::StringBuilder;
 
-sb.append("Hello,");
-sb.append(" ");
-sb.append("world!");
+sb.Append("Hello,");
+sb.Append(" ");
+sb.Append("world!");
 
 sb += " A tad extra!";
 
