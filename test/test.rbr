@@ -91,3 +91,9 @@ local untrimmed = "    dfasdfdsaf    ";
 PrintLn("TRIM RIGHT: ", ":" + untrimmed.TrimRight() + ":");
 PrintLn("TRIM LEFT: ", ":" + untrimmed.TrimLeft() + ":");
 PrintLn("TRIM ALL:", ":" + untrimmed.Trim() + ":");
+
+Meta = Include("Meta");
+
+local func_inf = Meta::GetFunctionInfo(tab.hello.Print);
+
+PrintLn(func_inf.Origin);
