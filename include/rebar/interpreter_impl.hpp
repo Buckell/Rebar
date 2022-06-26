@@ -759,11 +759,18 @@ namespace rebar {
 
                         function func { m_environment, reinterpret_cast<void*>(env_interpreter.m_function_sources.back().get()) };
 
+                        // TODO: Move following into dedicated routine.
+                        function self_function { m_environment, bit_cast<void*>(this) };
+                        function_info& self_function_info = m_environment.get_function_info(self_function);
+                        auto& source = dynamic_cast<function_info_source::rebar&>(self_function_info.get_source());
+
+                        std::string_view function_identifier_plaintext = decl.m_identifier.get_string_representation(source.m_plaintext_source, 1);
+
                         m_environment.emplace_function_info(func, {
-                                decl.m_identifier.to_string(), // TODO: Generate "useful" name for functions.
-                                "REBAR INTERNAL;"s + std::to_string(m_environment.get_current_function_id_stack()),
-                                m_environment.get_current_function_id_stack(),
-                                {} // TODO: Implement full function info for interpreter functions.
+                            std::string(function_identifier_plaintext), // TODO: Generate "useful" name for functions.
+                            "REBAR INTERNAL;INTERPRETER;"s + std::to_string(m_environment.get_current_function_id_stack()),
+                            m_environment.get_current_function_id_stack(),
+                            std::make_unique<function_info_source::rebar>(source.m_plaintext_source, n) // TODO: Implement full function info for interpreter functions.
                         });
 
                         assignee = func;

@@ -13,7 +13,7 @@
 #include "operator_precedence.hpp"
 
 namespace rebar {
-    struct node {
+    struct node : public origin_locked {
         enum class type : enum_base {
             empty,
             token,
@@ -105,12 +105,13 @@ namespace rebar {
 
         using block = std::vector<node>;
         using expression = abstract_syntax_tree;
-        using group = expression;
         using selector = expression;
         using ranged_selector = std::vector<node>;
         using argument_list = std::vector<node>;
         using return_statement = expression;
         using immediate_array = std::vector<node>;
+
+        struct group : public expression, public origin_locked {};
 
         struct if_declaration {
             group m_conditional;
@@ -132,7 +133,7 @@ namespace rebar {
             group m_iteration;
             block m_body;
 
-            for_declaration(expression a_initialization, group a_conditional, expression a_iteration, block a_body) noexcept :
+            for_declaration(group a_initialization, group a_conditional, group a_iteration, block a_body) noexcept :
                     m_initialization(std::move(a_initialization)), m_conditional(std::move(a_conditional)),
                     m_iteration(std::move(a_iteration)), m_body(std::move(a_body)) {}
 
@@ -203,14 +204,12 @@ namespace rebar {
 
         type m_type;
         data_type m_data;
-        span<token> m_tokens;
-        span<source_position> m_source_positions;
 
         node() noexcept : m_type(type::empty), m_data(nullptr) {}
-        node(const span<token> a_tokens, const span<source_position> a_source_positions, const type a_type, data_type a_data) noexcept : m_tokens(a_tokens), m_source_positions(a_source_positions), m_type(a_type), m_data(std::move(a_data)) {}
+        node(const span<token> a_tokens, const span<source_position> a_source_positions, const type a_type, data_type a_data) noexcept : origin_locked { a_tokens, a_source_positions }, m_type(a_type), m_data(std::move(a_data)) {}
 
         template <typename t_type, typename... t_args>
-        node(const span<token> a_tokens, const span<source_position> a_source_positions, const type a_type, std::in_place_type_t<t_type> a_in_place_type, t_args... a_args) noexcept : m_tokens(a_tokens), m_source_positions(a_source_positions), m_type(a_type), m_data(a_in_place_type, std::forward<t_args>(a_args)...) {}
+        node(const span<token> a_tokens, const span<source_position> a_source_positions, const type a_type, std::in_place_type_t<t_type> a_in_place_type, t_args... a_args) noexcept : origin_locked { a_tokens, a_source_positions }, m_type(a_type), m_data(a_in_place_type, std::forward<t_args>(a_args)...) {}
 
         node(const node& a_node) = default;
         node(node&& a_node) noexcept = default;
@@ -843,8 +842,8 @@ namespace rebar {
                         separator::operation_index,
                         a_nodes[0],
                         {
-                            a_nodes[1].m_tokens,
-                            a_nodes[1].m_source_positions,
+                            a_nodes[1].m_origin_tokens,
+                            a_nodes[1].m_origin_source_positions,
                             node::type::expression,
                             a_nodes[1].get_selector()
                         }
@@ -924,17 +923,19 @@ namespace rebar {
         if (info.has_single_operand()) {
             node::abstract_syntax_tree ast{ sep };
 
+            // TODO: Remove undesirable span constructions. Assign to independent intermediate variables.
+
             if (begin_node.is_token() && begin_node.get_token() == sep) {
                 ast.add_operand(a_nodes.size() == 2 ? end_node : node {
-                    span<token>(a_nodes[1].m_tokens.begin(), end_node.m_tokens.end()),
-                    span<source_position>(a_nodes[1].m_source_positions.begin(), end_node.m_source_positions.end()),
+                    span<token>(a_nodes[1].m_origin_tokens.begin(), end_node.m_origin_tokens.end()),
+                    span<source_position>(a_nodes[1].m_origin_source_positions.begin(), end_node.m_origin_source_positions.end()),
                     node::type::expression,
                     parse_ast(a_nodes.subspan(1))
                 });
             } else if (end_node.is_token() && end_node.get_token() == sep) {
                 ast.add_operand(a_nodes.size() == 2 ? begin_node : node {
-                    span<token>(begin_node.m_tokens.begin(), (a_nodes.end() - 2)->m_tokens.end()),
-                    span<source_position>(begin_node.m_source_positions.begin(), (a_nodes.end() - 2)->m_source_positions.end()),
+                    span<token>(begin_node.m_origin_tokens.begin(), (a_nodes.end() - 2)->m_origin_tokens.end()),
+                    span<source_position>(begin_node.m_origin_source_positions.begin(), (a_nodes.end() - 2)->m_origin_source_positions.end()),
                     node::type::expression,
                     parse_ast(a_nodes.subspan(0, a_nodes.size() - 1))
                 });
@@ -947,8 +948,8 @@ namespace rebar {
             if (min_precedence >= get_separator_info(separator::group_open).precedence()) {
                 span<node> lhs_nodes(a_nodes.begin(), a_nodes.end() - 1);
                 node lhs = (lhs_nodes.size() == 1) ? lhs_nodes[0] : node {
-                    span<token>(lhs_nodes.begin()->m_tokens.begin(), (lhs_nodes.end() - 1)->m_tokens.end()),
-                    span<source_position>(lhs_nodes.begin()->m_source_positions.begin(), (lhs_nodes.end() - 1)->m_source_positions.end()),
+                    span<token>(lhs_nodes.begin()->m_origin_tokens.begin(), (lhs_nodes.end() - 1)->m_origin_tokens.end()),
+                    span<source_position>(lhs_nodes.begin()->m_origin_source_positions.begin(), (lhs_nodes.end() - 1)->m_origin_source_positions.end()),
                     node::type::expression,
                     parse_ast(lhs_nodes)
                 };
@@ -995,8 +996,8 @@ namespace rebar {
         span<node> rhs_nodes(min_separator_it + 1, a_nodes.end());
 
         node lhs = lhs_nodes.size() == 1 ? lhs_nodes[0] : node {
-            span<token>(lhs_nodes.begin()->m_tokens.begin(), (lhs_nodes.end() - 1)->m_tokens.end()),
-            span<source_position>(lhs_nodes.begin()->m_source_positions.begin(), (lhs_nodes.end() - 1)->m_source_positions.end()),
+            span<token>(lhs_nodes.begin()->m_origin_tokens.begin(), (lhs_nodes.end() - 1)->m_origin_tokens.end()),
+            span<source_position>(lhs_nodes.begin()->m_origin_source_positions.begin(), (lhs_nodes.end() - 1)->m_origin_source_positions.end()),
             node::type::expression,
             parse_ast(lhs_nodes)
         };
@@ -1024,15 +1025,15 @@ namespace rebar {
             span<node> ternary_rhs_nodes(ternary_break_find + 1, rhs_nodes.end());
 
             node lhs = ternary_lhs_nodes.size() == 1 ? ternary_lhs_nodes[0] : node {
-                    span<token>(ternary_lhs_nodes.begin()->m_tokens.begin(), (ternary_lhs_nodes.end() - 1)->m_tokens.end()),
-                    span<source_position>(ternary_lhs_nodes.begin()->m_source_positions.begin(), (ternary_lhs_nodes.end() - 1)->m_source_positions.end()),
+                    span<token>(ternary_lhs_nodes.begin()->m_origin_tokens.begin(), (ternary_lhs_nodes.end() - 1)->m_origin_tokens.end()),
+                    span<source_position>(ternary_lhs_nodes.begin()->m_origin_source_positions.begin(), (ternary_lhs_nodes.end() - 1)->m_origin_source_positions.end()),
                     node::type::expression,
                 parse_ast(ternary_lhs_nodes)
             };
 
             node rhs = ternary_rhs_nodes.size() == 1 ? ternary_rhs_nodes[0] : node {
-                span<token>(ternary_rhs_nodes.begin()->m_tokens.begin(), (ternary_rhs_nodes.end() - 1)->m_tokens.end()),
-                span<source_position>(ternary_rhs_nodes.begin()->m_source_positions.begin(), (ternary_rhs_nodes.end() - 1)->m_source_positions.end()),
+                span<token>(ternary_rhs_nodes.begin()->m_origin_tokens.begin(), (ternary_rhs_nodes.end() - 1)->m_origin_tokens.end()),
+                span<source_position>(ternary_rhs_nodes.begin()->m_origin_source_positions.begin(), (ternary_rhs_nodes.end() - 1)->m_origin_source_positions.end()),
                 node::type::expression,
                 parse_ast(ternary_rhs_nodes)
             };
@@ -1044,8 +1045,8 @@ namespace rebar {
         }
 
         node rhs = rhs_nodes.size() == 1 ? rhs_nodes[0] : node{
-            span<token>(rhs_nodes.begin()->m_tokens.begin(), (rhs_nodes.end() - 1)->m_tokens.end()),
-            span<source_position>(rhs_nodes.begin()->m_source_positions.begin(), (rhs_nodes.end() - 1)->m_source_positions.end()),
+            span<token>(rhs_nodes.begin()->m_origin_tokens.begin(), (rhs_nodes.end() - 1)->m_origin_tokens.end()),
+            span<source_position>(rhs_nodes.begin()->m_origin_source_positions.begin(), (rhs_nodes.end() - 1)->m_origin_source_positions.end()),
             node::type::expression,
             parse_ast(rhs_nodes)
         };
@@ -1324,7 +1325,11 @@ namespace rebar {
             }
         }
 
-        return parse_ast(nodes);
+        return {
+            parse_ast(nodes),
+            a_tokens,
+            a_source_positions
+        };
     }
 
     // Routine to parse a block.

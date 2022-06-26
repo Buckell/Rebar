@@ -189,9 +189,10 @@ namespace rebar {
                 a_name.has_value() ? a_name.value() : "UNNAMED",
                 a_origin.has_value() ? a_origin.value() : "IMMEDIATE;"s + std::to_string(m_id_stack),
                 m_id_stack,
-                std::make_unique<function_info_source::rebar>(function_info_source::rebar {
-                    {},
-                    punit.m_plaintext,
+                std::make_unique<function_info_source::rebar>(punit.m_plaintext, node {
+                    punit.m_lex_unit.tokens(),
+                    punit.m_lex_unit.source_positions(),
+                    node::type::block,
                     punit.m_block
                 })
             });
@@ -218,10 +219,7 @@ namespace rebar {
                 a_name.has_value() ? a_name.value() : "UNNAMED",
                 a_origin.has_value() ? a_origin.value() : "NATIVE;"s + std::to_string(m_id_stack),
                 m_id_stack,
-                std::make_unique<function_info_source::native>(function_info_source::native {
-                    {},
-                    a_function
-                })
+                std::make_unique<function_info_source::native>(a_function)
             });
 
             return func;

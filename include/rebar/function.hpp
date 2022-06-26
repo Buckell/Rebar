@@ -37,7 +37,9 @@ namespace rebar {
     };
 
     namespace function_info_source {
-        struct source {};
+        struct source {
+            virtual void src() const {};
+        };
     }
 
     struct function_info {
@@ -59,7 +61,7 @@ namespace rebar {
             return m_id;
         }
 
-        [[nodiscard]] function_info_source::source& get_plaintext_source() const noexcept {
+        [[nodiscard]] function_info_source::source& get_source() const noexcept {
             return *m_source;
         }
     };
@@ -67,11 +69,15 @@ namespace rebar {
     namespace function_info_source {
         struct rebar : public source {
             std::string_view m_plaintext_source;
-            node::block m_parse_source;
+            node m_source_node;
+
+            rebar(std::string_view a_plaintext, node a_source_node) : m_plaintext_source(a_plaintext), m_source_node(a_source_node) {}
         };
 
         struct native : public source {
             callable m_function;
+
+            native(callable a_function) : m_function(a_function) {}
         };
     }
 }

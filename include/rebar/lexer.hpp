@@ -165,19 +165,31 @@ namespace rebar {
     };
 
     class source_position {
-        size_t m_row;
-        size_t m_column;
+        size_t m_index;
+        size_t m_size;
 
     public:
-        constexpr source_position() noexcept : m_row(0), m_column(0) {}
-        constexpr source_position(const size_t a_row, const size_t a_column) : m_row(a_row), m_column(a_column) {}
+        constexpr source_position() noexcept : m_index(0), m_size(0) {}
+        constexpr source_position(const size_t a_index, const size_t a_size) : m_index(a_index), m_size(a_size) {}
 
-        [[nodiscard]] constexpr size_t row() const noexcept {
-            return m_row;
+        [[nodiscard]] constexpr size_t get_index() const noexcept {
+            return m_index;
         }
 
-        [[nodiscard]] constexpr size_t column() const noexcept {
-            return m_column;
+        [[nodiscard]] constexpr size_t get_size() const noexcept {
+            return m_size;
+        }
+    };
+
+    struct origin_locked {
+        span<token> m_origin_tokens;
+        span<source_position> m_origin_source_positions;
+
+        std::string_view get_string_representation(std::string_view a_plaintext, std::ptrdiff_t a_start_offset = 0, std::ptrdiff_t a_end_offset = 0) const {
+            size_t begin_index = (m_origin_source_positions.begin() + a_start_offset)->get_index();
+            size_t end_index = (m_origin_source_positions.end() - 1 - a_end_offset)->get_index() + (m_origin_source_positions.end() - 1)->get_size();
+
+            return a_plaintext.substr(begin_index, end_index - begin_index);
         }
     };
 
@@ -271,7 +283,9 @@ namespace rebar {
                         escape_mode = false;
                     } else if (character == '"') {
                         string_mode = false;
-                        unit.add_token({ 0, 0 }, token::type::string_literal, std::in_place_type<std::string>, a_string.substr(string_start_index, scan_index - string_start_index));
+
+                        std::string_view str = a_string.substr(string_start_index, scan_index - string_start_index);
+                        unit.add_token({ scan_index - str.size() - 1, str.size() + 2 }, token::type::string_literal, std::in_place_type<std::string>, str);
                     }
 
                     escape_mode = character == '\\';
@@ -298,12 +312,12 @@ namespace rebar {
                             // Check if the "identifier" is a number.
                             if (is_number_string(identifier_string)) {
                                 if (is_integer_string(identifier_string)) {
-                                    unit.add_token({ 0, 0 }, token::type::integer_literal, std::stoll(std::string(identifier_string)));
+                                    unit.add_token({ scan_index - identifier_string.size(), identifier_string.size() }, token::type::integer_literal, std::stoll(std::string(identifier_string)));
                                 } else {
-                                    unit.add_token({ 0, 0 }, token::type::number_literal, std::stod(std::string(identifier_string)));
+                                    unit.add_token({ scan_index - identifier_string.size(), identifier_string.size() }, token::type::number_literal, std::stod(std::string(identifier_string)));
                                 }
                             } else {
-                                unit.add_token({ 0, 0 }, token::type::identifier, std::in_place_type<std::string>, identifier_string);
+                                unit.add_token({ scan_index - identifier_string.size(), identifier_string.size() }, token::type::identifier, std::in_place_type<std::string>, identifier_string);
                             }
 
                             identifier_mode = false;
@@ -321,12 +335,12 @@ namespace rebar {
                         // Check if the "identifier" is a number.
                         if (is_number_string(identifier_string)) {
                             if (is_integer_string(identifier_string)) {
-                                unit.add_token({ 0, 0 }, token::type::integer_literal, std::stoll(std::string(identifier_string)));
+                                unit.add_token({ scan_index - identifier_string.size(), identifier_string.size() }, token::type::integer_literal, std::stoll(std::string(identifier_string)));
                             } else {
-                                unit.add_token({ 0, 0 }, token::type::number_literal, std::stod(std::string(identifier_string)));
+                                unit.add_token({ scan_index - identifier_string.size(), identifier_string.size() }, token::type::number_literal, std::stod(std::string(identifier_string)));
                             }
                         } else {
-                            unit.add_token({ 0, 0 }, token::type::identifier, std::in_place_type<std::string>, identifier_string);
+                            unit.add_token({ scan_index - identifier_string.size(), identifier_string.size() }, token::type::identifier, std::in_place_type<std::string>, identifier_string);
                         }
 
                         identifier_mode = false;
@@ -359,9 +373,9 @@ namespace rebar {
                             if (is_number_string(identifier_string)) {
                                 if (next_token->second.replaced != separator::dot) {
                                     if (is_integer_string(identifier_string)) {
-                                        unit.add_token({ 0, 0 }, token::type::integer_literal, std::stoll(std::string(identifier_string)));
+                                        unit.add_token({ scan_index - identifier_string.size(), identifier_string.size() }, token::type::integer_literal, std::stoll(std::string(identifier_string)));
                                     } else {
-                                        unit.add_token({ 0, 0 }, token::type::number_literal, std::stod(std::string(identifier_string)));
+                                        unit.add_token({ scan_index - identifier_string.size(), identifier_string.size() }, token::type::number_literal, std::stod(std::string(identifier_string)));
                                     }
 
                                     identifier_mode = false;
@@ -373,12 +387,12 @@ namespace rebar {
                                 identifier_mode = false;
 
                                 if (!identifier_string.empty()) {
-                                    unit.add_token({ 0, 0 }, token::type::identifier, std::in_place_type<std::string>, identifier_string);
+                                    unit.add_token({ scan_index - identifier_string.size(), identifier_string.size() }, token::type::identifier, std::in_place_type<std::string>, identifier_string);
                                 }
                             }
                         }
 
-                        unit.add_token({ 0, 0 }, next_token->second.replaced);
+                        unit.add_token({ scan_index, next_token->first.size() }, next_token->second.replaced);
                         scan_index += next_token->first.size();
                     } else {
                         identifier_start_index = identifier_mode ? identifier_start_index : scan_index;
@@ -395,12 +409,12 @@ namespace rebar {
                 // Check if the "identifier" is a string.
                 if (is_number_string(identifier_string)) {
                     if (is_integer_string(identifier_string)) {
-                        unit.add_token({ 0, 0 }, token::type::integer_literal, std::stoll(std::string(identifier_string)));
+                        unit.add_token({ scan_index - identifier_string.size(), identifier_string.size() }, token::type::integer_literal, std::stoll(std::string(identifier_string)));
                     } else {
-                        unit.add_token({ 0, 0 }, token::type::number_literal, std::stod(std::string(identifier_string)));
+                        unit.add_token({ scan_index - identifier_string.size(), identifier_string.size() }, token::type::number_literal, std::stod(std::string(identifier_string)));
                     }
                 } else {
-                    unit.add_token({ 0, 0 }, token::type::identifier, std::in_place_type<std::string>, identifier_string);
+                    unit.add_token({ scan_index - identifier_string.size(), identifier_string.size() }, token::type::identifier, std::in_place_type<std::string>, identifier_string);
                 }
             }
 
