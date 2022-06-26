@@ -13,7 +13,7 @@ namespace rebar::library::standard {
 
         void load_string_builder(environment& a_environment, rebar::virtual_table& a_string_builder) {
             a_string_builder.overload_new = [](environment* env, native_object) -> rebar::object {
-                return env->create_native_object<std::vector<std::string>>("REBAR::STD::STRING_BUILDER");
+                return env->create_native_object<std::vector<std::string>>("REBAR::STD::STRING_UTILITY::STRING_BUILDER");
             };
 
             a_string_builder.overload_addition_assignment = [](environment* env, native_object a_this, object rhs) {
@@ -39,7 +39,7 @@ namespace rebar::library::standard {
                 }
 
                 return env->str(final);
-            });
+            }, "ToString", "REBAR::STD::STRING_UTILITY::STRING_BUILDER");
 
             a_string_builder[a_environment.str("Append")] = a_environment.bind([](environment* env) -> object {
                 object this_object = env->arg(0);
@@ -48,7 +48,7 @@ namespace rebar::library::standard {
                 this_object.get_native_object().get_object<std::vector<std::string>>().push_back(obj.to_string());
 
                 return null;
-            });
+            }, "Append", "REBAR::STD::STRING_UTILITY::STRING_BUILDER");
         }
 
         object load(environment& a_environment) override {
