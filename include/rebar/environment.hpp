@@ -186,7 +186,7 @@ namespace rebar {
             function func = m_provider->compile(punit);
 
             emplace_function_info(func, {
-                a_name.has_value() ? a_name.value() : "UNNAMED",
+                a_name.has_value() ? std::move(a_name.value()) : "UNNAMED",
                 a_origin.has_value() ? a_origin.value() : "IMMEDIATE;"s + std::to_string(m_id_stack),
                 m_id_stack,
                 std::make_unique<function_info_source::rebar>(punit.m_plaintext, node {
