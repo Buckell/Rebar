@@ -14,8 +14,6 @@ namespace rebar::library::standard {
         static object GetFunctionInfo(environment* a_env) {
             auto func_object = a_env->arg(0);
 
-            std::cout << "________________" << std::endl;
-
             if (func_object.is_function()) {
                 function func = func_object.get_function(*a_env);
 
