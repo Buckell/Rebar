@@ -626,6 +626,8 @@ namespace rebar {
                             auto this_object = resolve_node(expr.get_operand(0));
                             callee = this_object.select(m_environment, detail_resolve_node(expr.get_operand(1), node_tags::identifier_as_string));
                             args.push_back(this_object);
+                        } else {
+                            callee = resolve_node(callable_node);
                         }
                     } else {
                         callee = resolve_node(callable_node);
