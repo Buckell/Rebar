@@ -180,6 +180,45 @@ namespace rebar {
 
         return str;
     }
+
+    struct file_position {
+        size_t row, column;
+
+        file_position(const size_t a_row = 0, const size_t a_column = 0) : row(a_row), column(a_column) {}
+
+        [[nodiscard]] size_t get_row() const noexcept {
+            return row;
+        }
+
+        [[nodiscard]] size_t get_column() const noexcept {
+            return column;
+        }
+    };
+
+    [[nodiscard]] inline bool is_display_character(char a_character) {
+        return 0x20 <= a_character && a_character <= 0x7E;
+    }
+
+    file_position calculate_file_position(const std::string_view a_plaintext, const size_t a_index) {
+        if (a_index >= a_plaintext.size()) {
+            return { 0, 0 };
+        }
+
+        file_position position;
+
+        for (size_t i = 0; i <= a_index; ++i) {
+            char character = a_plaintext[i];
+
+            if (is_display_character(character)) {
+                ++position.column;
+            } else if (character == '\n') {
+                ++position.row;
+                position.column = 0;
+            }
+        }
+
+        return position;
+    }
 }
 
 #endif //REBAR_UTILITY_HPP
