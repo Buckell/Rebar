@@ -1857,6 +1857,8 @@ namespace rebar {
                     // Malformed break statement.
                     // TODO: Throw malformed break statement error.
                 }
+
+                ++i;
             } else if (tok == keyword::continue_statement) {
                 if (a_tokens[i + 1] == separator::end_statement) {
                     nodes.emplace_back(
@@ -1869,6 +1871,8 @@ namespace rebar {
                     // Malformed break statement.
                     // TODO: Throw malformed break statement error.
                 }
+
+                ++i;
             } else if (tok == keyword::local) {
                 // Local definition declared.
 
