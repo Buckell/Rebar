@@ -96,6 +96,8 @@ namespace rebar {
     }
 
     std::string object::to_string() noexcept {
+        using namespace std::string_literals;
+
         switch (m_type) {
             case type::null:
                 return "null";
@@ -111,6 +113,10 @@ namespace rebar {
                 return get_array().to_string();
             case type::native_object:
                 return "NATIVE_OBJECT";
+            case type::function:
+                return "FUNCTION "s + std::to_string(m_data);
+            case type::table:
+                return "TABLE "s + std::to_string(m_data);
             default:
                 return std::to_string(m_data);
         }

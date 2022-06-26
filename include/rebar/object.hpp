@@ -287,24 +287,8 @@ namespace rebar {
         static object lesser_than_equal_to(environment& a_environment, object lhs, const object rhs);
 
         friend std::ostream& operator << (std::ostream& lhs, object rhs) noexcept {
-            switch (rhs.m_type) {
-                case type::null:
-                    return (lhs << "null");
-                case type::boolean:
-                    return (lhs << (rhs.get_boolean() ? "true" : "false"));
-                case type::integer:
-                    return (lhs << rhs.get_integer());
-                case type::number:
-                    return (lhs << rhs.get_number());
-                case type::string:
-                    return (lhs << rhs.get_string());
-                case type::array:
-                    return (lhs << rhs.get_array().to_string());
-                case type::native_object:
-                    return (lhs << "NATIVE_OBJECT");
-                default:
-                    return (lhs << rhs.data());
-            }
+            lhs << rhs.to_string();
+            return lhs;
         }
 
         [[nodiscard]] operator bool() const noexcept {
