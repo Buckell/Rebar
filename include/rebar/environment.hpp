@@ -188,7 +188,7 @@ namespace rebar {
             emplace_function_info(func, {
                 a_name.has_value() ? std::move(a_name.value()) : "UNNAMED",
                 a_origin.has_value() ? a_origin.value() : "IMMEDIATE;"s + std::to_string(m_id_stack),
-                m_id_stack,
+                0,
                 std::make_unique<function_info_source::rebar>(punit.m_plaintext, node {
                     punit.m_lex_unit.tokens(),
                     punit.m_lex_unit.source_positions(),
@@ -200,7 +200,8 @@ namespace rebar {
             return func;
         }
 
-        void emplace_function_info(function a_function, function_info a_function_info) noexcept {
+        void emplace_function_info(const function a_function, function_info a_function_info) noexcept {
+            a_function_info.m_id = m_id_stack++;
             m_function_infos.emplace(bit_cast<size_t>(a_function.m_data), std::make_unique<function_info>(std::move(a_function_info)));
         }
 
@@ -218,7 +219,7 @@ namespace rebar {
             emplace_function_info(func, {
                 a_name.has_value() ? a_name.value() : "UNNAMED",
                 a_origin.has_value() ? a_origin.value() : "NATIVE;"s + std::to_string(m_id_stack),
-                m_id_stack,
+                0,
                 std::make_unique<function_info_source::native>(a_function)
             });
 

@@ -609,9 +609,9 @@ namespace rebar {
                         return resolve_node(a_expression.get_operand(0)).select(m_environment, resolve_node(a_expression.get_operand(1)));
                     } else if (a_expression.count() > 2) {
                         return resolve_node(a_expression.get_operand(0)).select(
-                                m_environment,
-                                resolve_node(a_expression.get_operand(1)),
-                                resolve_node(a_expression.get_operand(2))
+                            m_environment,
+                            resolve_node(a_expression.get_operand(1)),
+                            resolve_node(a_expression.get_operand(2))
                         );
                     }
                 case separator::operation_call: {
@@ -771,7 +771,7 @@ namespace rebar {
                         m_environment.emplace_function_info(func, {
                             std::string(function_identifier_plaintext), // TODO: Generate "useful" name for functions.
                             "REBAR INTERNAL;INTERPRETER;"s + std::to_string(m_environment.get_current_function_id_stack()),
-                            m_environment.get_current_function_id_stack(),
+                            0,
                             std::make_unique<function_info_source::rebar>(source.m_plaintext_source, n) // TODO: Implement full function info for interpreter functions.
                         });
 
