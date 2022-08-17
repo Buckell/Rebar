@@ -97,3 +97,7 @@ Meta = Include("Meta");
 local func_inf = Meta::GetFunctionInfo(tab.hello.Print);
 
 PrintLn(func_inf.Origin);
+
+while (true) {
+
+}

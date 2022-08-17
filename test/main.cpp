@@ -78,10 +78,15 @@ int main() {
 
     std::string file_contents{ rebar::read_file("../test/test.rbr") };
 
-    rebar::parse_unit p_unit = rebar::parse(code_lexer, file_contents);
-    std::cout << p_unit.string_representation() << std::endl;
+    try {
+        rebar::parse_unit p_unit = rebar::parse(code_lexer, file_contents);
+        std::cout << p_unit.string_representation() << std::endl;
 
-    auto file_func = env.compile_string(file_contents, "TEST FILE MAIN");
-    file_func();
+        auto file_func = env.compile_string(file_contents, "TEST FILE MAIN");
+        file_func();
+    } catch (rebar::exception& e) {
+        std::cout << e.what() << std::endl;
+    }
+
     return 0;
 }

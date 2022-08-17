@@ -11,6 +11,7 @@
 #include "definitions.hpp"
 #include "lexer.hpp"
 #include "operator_precedence.hpp"
+#include "exception.hpp"
 
 namespace rebar {
     struct node : public origin_locked {
@@ -723,9 +724,9 @@ namespace rebar {
     }
     */
 
-    [[nodiscard]] node::group parse_group(const span<token> a_tokens, const span<source_position> a_source_positions) noexcept;
+    [[nodiscard]] node::group parse_group(const span<token> a_tokens, const span<source_position> a_source_positions);
 
-    [[nodiscard]] node::argument_list parse_arguments(const span<token> a_tokens, const span<source_position> a_source_positions) noexcept {
+    [[nodiscard]] node::argument_list parse_arguments(const span<token> a_tokens, const span<source_position> a_source_positions) {
         std::vector<node> groups;
 
         span<token>::iterator last_token = a_tokens.begin();
@@ -824,9 +825,9 @@ namespace rebar {
                 }
             } else if (a_nodes[1].is_group()) {
                 return {
-                        separator::operation_call,
-                        a_nodes[0],
-                        a_nodes[1]
+                    separator::operation_call,
+                    a_nodes[0],
+                    a_nodes[1]
                 };
             } else if (a_nodes[1].is_argument_list()) {
                 node::abstract_syntax_tree ast{ separator::operation_call };
@@ -1055,7 +1056,7 @@ namespace rebar {
     }
 
     // Routine to parse groups.
-    [[nodiscard]] node::group parse_group(const span<token> a_tokens, const span<source_position> a_source_positions) noexcept {
+    [[nodiscard]] node::group parse_group(const span<token> a_tokens, const span<source_position> a_source_positions) {
         std::vector<node> nodes;
 
         for (size_t i = 0; i < a_tokens.size(); ++i) {
@@ -1333,7 +1334,7 @@ namespace rebar {
     }
 
     // Routine to parse a block.
-    [[nodiscard]] node::block parse_block(const span<token> a_tokens, const span<source_position> a_source_positions) noexcept {
+    [[nodiscard]] node::block parse_block(const std::string_view a_plaintext, const span<token> a_tokens, const span<source_position> a_source_positions) {
         std::vector<node> nodes;
 
         bool flag_constant = false;
@@ -1373,7 +1374,7 @@ namespace rebar {
                                 node::type::if_declaration,
                                 node::if_declaration(
                                     parse_group(conditional_tokens, conditional_source_positions),
-                                    parse_block(body_tokens, body_source_positions)
+                                    parse_block(a_plaintext, body_tokens, body_source_positions)
                                 )
                             );
 
@@ -1461,7 +1462,7 @@ namespace rebar {
                                         node::type::else_if_declaration,
                                         node::else_if_declaration(
                                             parse_group(conditional_tokens, conditional_source_positions),
-                                            parse_block(body_tokens, body_source_positions)
+                                            parse_block(a_plaintext, body_tokens, body_source_positions)
                                         )
                                     );
 
@@ -1535,7 +1536,7 @@ namespace rebar {
                             else_statement_tokens,
                             else_statement_source_positions,
                             node::type::else_declaration,
-                            parse_block(body_tokens, body_source_positions)
+                            parse_block(a_plaintext, body_tokens, body_source_positions)
                         );
 
                         i += std::distance(scope_close_find, a_tokens.begin() + i);
@@ -1560,7 +1561,7 @@ namespace rebar {
                             else_statement_tokens,
                             else_statement_source_positions,
                             node::type::else_declaration,
-                            parse_block(statement_tokens, statement_source_positions)
+                            parse_block(a_plaintext, statement_tokens, statement_source_positions)
                         );
 
                         i += std::distance(statement_end_find, a_tokens.begin() + i);
@@ -1606,7 +1607,7 @@ namespace rebar {
                             parse_group(initialization_tokens, initialization_source_positions),
                             parse_group(condition_tokens, condition_source_positions),
                             parse_group(iteration_tokens, iteration_source_positions),
-                            parse_block(body_tokens, body_source_positions)
+                            parse_block(a_plaintext, body_tokens, body_source_positions)
                         )
                     );
 
@@ -1629,7 +1630,7 @@ namespace rebar {
                             parse_group(initialization_tokens, initialization_source_positions),
                             parse_group(condition_tokens, condition_source_positions),
                             parse_group(iteration_tokens, iteration_source_positions),
-                            parse_block(body_tokens, body_source_positions)
+                            parse_block(a_plaintext, body_tokens, body_source_positions)
                         )
                     );
 
@@ -1699,7 +1700,7 @@ namespace rebar {
                             func_identifier,
                             tags,
                             func_args,
-                            parse_block(body_tokens, body_source_positions)
+                            parse_block(a_plaintext, body_tokens, body_source_positions)
                         )
                     );
 
@@ -1723,7 +1724,7 @@ namespace rebar {
                             func_identifier,
                             tags,
                             func_args,
-                            parse_block(body_tokens, body_source_positions)
+                            parse_block(a_plaintext, body_tokens, body_source_positions)
                         )
                     );
 
@@ -1760,7 +1761,7 @@ namespace rebar {
                                 node::type::while_declaration,
                                 node::while_declaration(
                                     parse_group(conditional_tokens, conditional_source_positions),
-                                    parse_block(body_tokens, body_source_positions)
+                                    parse_block(a_plaintext, body_tokens, body_source_positions)
                                 )
                             );
 
@@ -1768,7 +1769,15 @@ namespace rebar {
                         } else {
                             // Malformed block postceding while-loop.
 
-                            // TODO: Throw incomplete block syntax error.
+                            auto indexed = get_line(a_plaintext, a_source_positions[i].get_index());
+
+                            throw syntax_exception(
+                                "Malformed block postceding while-loop declaration. Missing closing brace.",
+                                "",
+                                i,
+                                indexed.first,
+                                indexed.second
+                            );
                         }
                     } else {
                         // Single statement while-loop with postceding statement.
@@ -1897,7 +1906,7 @@ namespace rebar {
                         scope_tokens,
                         scope_source_positions,
                         node::type::block,
-                        parse_block(body_tokens, body_source_positions)
+                        parse_block(a_plaintext, body_tokens, body_source_positions)
                     );
 
                     i += std::distance(block_end, a_tokens.begin() + i);

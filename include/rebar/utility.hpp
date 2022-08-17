@@ -219,6 +219,33 @@ namespace rebar {
 
         return position;
     }
+
+    std::pair<file_position, std::string_view> get_line(const std::string_view a_plaintext, const size_t a_index) {
+        if (a_index >= a_plaintext.size()) {
+            return { { 0, 0 }, "" };
+        }
+
+        file_position position { 0, 0 };
+        size_t newline_index = 0;
+
+        for (size_t i = 0; i <= a_index; ++i) {
+            char character = a_plaintext[i];
+
+            if (is_display_character(character)) {
+                ++position.column;
+            } else if (character == '\n') {
+                newline_index = i + 1;
+                ++position.row;
+                position.column = 0;
+            }
+        }
+
+        size_t line_end_index = a_index;
+        for (char character = a_plaintext[line_end_index]; character != '\n' && line_end_index + 1 < a_plaintext.size(); character = a_plaintext[line_end_index++]);
+        --line_end_index;
+
+        return { position, a_plaintext.substr(newline_index, line_end_index - newline_index) };
+    }
 }
 
 #endif //REBAR_UTILITY_HPP

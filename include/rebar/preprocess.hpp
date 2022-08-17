@@ -41,11 +41,11 @@ namespace rebar {
         }
     };
 
-    [[nodiscard]] parse_unit parse(lexer& a_lexer, std::string a_string) noexcept {
+    [[nodiscard]] parse_unit parse(lexer& a_lexer, std::string a_string) {
         parse_unit unit;
         unit.m_plaintext = std::move(a_string);
         unit.m_lex_unit = std::move(a_lexer.lex(unit.m_plaintext));
-        unit.m_block = parse_block(span<token>(unit.m_lex_unit.tokens()), unit.m_lex_unit.source_positions());
+        unit.m_block = parse_block(unit.m_plaintext, span<token>(unit.m_lex_unit.tokens()), unit.m_lex_unit.source_positions());
 
         return std::move(unit);
     }
