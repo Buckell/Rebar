@@ -22,7 +22,7 @@ namespace rebar::library::standard {
                 std::cout << "    " << env->arg(i);
             }
 
-            std::cout << '\n';
+            std::cout << std::endl;
 
             return rebar::null;
         }
@@ -33,6 +33,8 @@ namespace rebar::library::standard {
             for (size_t i = 1; i < env->arg_count(); i++) {
                 std::cout << "    " << env->arg(i);
             }
+
+            std::cout << std::flush;
 
             return rebar::null;
         }
