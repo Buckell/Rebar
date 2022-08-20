@@ -5,6 +5,8 @@
 #ifndef REBAR_SPAN_HPP
 #define REBAR_SPAN_HPP
 
+#include <limits>
+
 namespace rebar {
     template <typename t_type>
     struct span_convertible {

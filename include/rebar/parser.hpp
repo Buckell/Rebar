@@ -862,9 +862,15 @@ namespace rebar {
             }
         }
 
-        const auto found = std::find_if(a_nodes.begin(), a_nodes.end(), [](const node& a_node) noexcept -> bool {
-            return a_node.is_token() && a_node.get_token().is_separator();
-        });
+        const auto end = a_nodes.cend();
+        auto found = a_nodes.end();
+
+        for (auto it = a_nodes.begin(); it != a_nodes.cend(); ++it) {
+            if (it->is_token() && it->get_token().is_separator()) {
+                found = it;
+                break;
+            }
+        }
 
         if (found == a_nodes.cend()) {
             bool flags = true;
@@ -906,9 +912,9 @@ namespace rebar {
 
                 if (tok.is_separator()) {
                     separator_info info = get_separator_info(tok.get_separator());
-                    min_precedence = std::min(min_precedence, info.precedence());
 
-                    if (info.precedence() == min_precedence) {
+                    if (info.precedence() <= min_precedence) {
+                        min_precedence = info.precedence();
                         min_separator_it = it;
                     }
                 }
@@ -916,6 +922,7 @@ namespace rebar {
         }
 
         separator sep = min_separator_it->get_token().get_separator();
+
         separator_info info = get_separator_info(sep);
 
         const auto& begin_node = *a_nodes.begin();

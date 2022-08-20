@@ -206,11 +206,11 @@ namespace rebar {
         [[nodiscard]] object length(environment& a_environment) noexcept;
 
         template <typename... t_objects>
-        object call(environment& a_environment, t_objects&&... a_objects);
+        object call_v(environment& a_environment, t_objects&&... a_objects);
         object call(environment& a_environment, span<object> a_objects);
 
         template <typename... t_objects>
-        object new_object(environment& a_environment, t_objects&&... a_objects);
+        object new_object_v(environment& a_environment, t_objects&&... a_objects);
         object new_object(environment& a_environment, span<object> a_objects);
 
         [[nodiscard]] object& index(environment& a_environment, const object rhs);
@@ -296,8 +296,8 @@ namespace rebar {
         }
 
         // TODO: Complete dereference function.
-        void dereference(object& a_object);
-        void reference(object& a_object);
+        static void dereference(object& a_object);
+        static void reference(object& a_object);
 
         [[nodiscard]] bool operator == (const object rhs) const noexcept {
             if (m_type != rhs.m_type) {

@@ -318,6 +318,7 @@ namespace rebar {
         };
 
         resolve_assignable = [this, &resolve_assignable_expression, &find_variable](const node& a_node) -> object& {
+
             if (a_node.is_token()) {
                 const token& tok = a_node.get_token();
 
@@ -649,7 +650,7 @@ namespace rebar {
 
                         return resolve_node(a_expression.get_operand(0)).new_object(m_environment, args);
                     } else {
-                        return resolve_node(a_expression.get_operand(0)).new_object(m_environment);
+                        return resolve_node(a_expression.get_operand(0)).new_object_v(m_environment);
                     }
                 default:
                     return null;

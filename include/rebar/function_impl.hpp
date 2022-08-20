@@ -14,7 +14,7 @@
 
 namespace rebar {
     template <typename... t_objects>
-    object function::call(t_objects&&... a_objects) {
+    object function::call_v(t_objects&&... a_objects) {
         std::array<object, 16> temp = m_environment.get_args();
 
         if constexpr (sizeof...(a_objects) > 0) {

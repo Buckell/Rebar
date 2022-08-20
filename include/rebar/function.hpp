@@ -8,6 +8,7 @@
 #include <type_traits>
 #include <string>
 #include <string_view>
+#include <memory>
 
 #include "token.hpp"
 #include "span.hpp"
@@ -27,12 +28,13 @@ namespace rebar {
         function(environment& a_environment, const void* a_data) noexcept : m_environment(a_environment), m_data(a_data) {}
 
         template <typename... t_objects>
-        object call(t_objects&&... a_objects);
+        object call_v(t_objects&&... a_objects);
+
         object call(const span<object> a_objects);
 
         template <typename... t_objects>
-        auto operator () (t_objects&&... a_objects) {
-            return call(std::forward<t_objects>(a_objects)...);
+        std::enable_if_t<sizeof...(t_objects) == 0 || ((std::is_convertible_v<t_objects, object>) && ...), object> operator () (t_objects&&... a_objects) {
+            return call_v(std::forward<t_objects>(a_objects)...);
         }
     };
 

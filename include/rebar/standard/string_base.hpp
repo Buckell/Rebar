@@ -5,6 +5,8 @@
 #ifndef REBAR_STRING_BASE_HPP
 #define REBAR_STRING_BASE_HPP
 
+#include <algorithm>
+
 #include "../rebar.hpp"
 
 namespace rebar::library::standard {
@@ -92,7 +94,7 @@ namespace rebar::library::standard {
             std::string output;
             output.reserve(self.length());
 
-            std::transform(self.begin(), self.end(), output.begin(), std::tolower);
+            std::transform(self.begin(), self.end(), output.begin(), static_cast<int(*)(int)>(std::tolower));
 
             return a_environment->str(output);
         }
@@ -103,7 +105,7 @@ namespace rebar::library::standard {
             std::string output;
             output.reserve(self.length());
 
-            std::transform(self.begin(), self.end(), output.begin(), std::toupper);
+            std::transform(self.begin(), self.end(), output.begin(), static_cast<int(*)(int)>(std::tolower));
 
             return a_environment->str(output);
         }

@@ -246,7 +246,7 @@ namespace rebar {
         }
 
         void set_args(const span<object> a_objects) {
-            std::copy_n(a_objects.begin(), a_objects.size(), m_arguments.begin());
+            memcpy(m_arguments.data(), a_objects.data(), a_objects.size() * sizeof(object));
             m_argument_count = a_objects.size();
         }
 

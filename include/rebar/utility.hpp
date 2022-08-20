@@ -9,6 +9,7 @@
 #include <sstream>
 #include <fstream>
 #include <algorithm>
+#include <cstring>
 
 #include "definitions.hpp"
 
@@ -115,7 +116,7 @@ namespace rebar {
 #if defined(_MSC_VER)
         return _aligned_malloc(a_size, a_alignment);
 #else
-        return std::aligned_alloc(a_alignment, a_size);
+        return aligned_alloc(a_alignment, a_size);
 #endif
         return nullptr;
     }
@@ -166,7 +167,7 @@ namespace rebar {
         static_assert(sizeof(t_destination) == sizeof(t_source));
 
         t_destination dest;
-        memcpy_s(&dest, sizeof(t_destination), &a_source, sizeof(t_source));
+        memcpy(&dest, &a_source, sizeof(t_source));
         return dest;
     }
 

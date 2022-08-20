@@ -12,7 +12,7 @@
 
 namespace rebar {
     template <typename... t_objects>
-    object object::call(environment& a_environment, t_objects&&... a_objects) {
+    object object::call_v(environment& a_environment, t_objects&&... a_objects) {
         switch (m_type) {
             case type::function:
                 return get_function(a_environment).call(std::forward<t_objects>(a_objects)...);
@@ -56,7 +56,7 @@ namespace rebar {
     }
 
     template <typename... t_objects>
-    object object::new_object(environment& a_environment, t_objects&&... a_objects) {
+    object object::new_object_v(environment& a_environment, t_objects&&... a_objects) {
         switch (m_type) {
             case type::native_object: {
                 std::array<object, 16> temp = a_environment.get_args();
@@ -819,7 +819,7 @@ namespace rebar {
 
                 break;
             case type::array:
-                get_array().dereference();
+                a_object.get_array().dereference();
                 break;
             case type::native_object:
                 a_object.get_native_object().dereference();
@@ -838,7 +838,7 @@ namespace rebar {
                 ++(a_object.get_table().m_reference_count);
                 break;
             case type::array:
-                get_array().reference();
+                a_object.get_array().reference();
                 break;
             case type::native_object:
                 a_object.get_native_object().reference();
