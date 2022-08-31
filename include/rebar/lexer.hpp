@@ -392,6 +392,16 @@ namespace rebar {
                             }
                         }
 
+                        if (a_string.size() > scan_index + next_token->first.size()) {
+                            char postceding_token = a_string[scan_index + next_token->first.size()];
+                            if (!next_token->second.interrupter && !(postceding_token == ' ' || postceding_token == '\n' || postceding_token == '\t' || postceding_token == '\r')) {
+                                identifier_start_index = scan_index;
+                                identifier_mode = true;
+                                scan_index += next_token->first.size();
+                                continue;
+                            }
+                        }
+
                         unit.add_token({ scan_index, next_token->first.size() }, next_token->second.replaced);
                         scan_index += next_token->first.size();
                     } else {
