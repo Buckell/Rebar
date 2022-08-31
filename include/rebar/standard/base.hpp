@@ -14,29 +14,33 @@ namespace rebar::library::standard {
         base() : library(usage::implicit_include) {}
 
         static REBAR_FUNCTION(PrintLn) {
+            auto& out = env->cout();
+
             if (env->arg_count() == 0) {
-                std::cout << '\n';
+                out << '\n';
             }
 
-            std::cout << env->arg(0);
+            out << env->arg(0);
 
             for (size_t i = 1; i < env->arg_count(); i++) {
-                std::cout << " " << env->arg(i);
+                out << " " << env->arg(i);
             }
 
-            std::cout << std::endl;
+            out << std::endl;
 
             *ret = rebar::null;
         }
 
         static REBAR_FUNCTION(Print) {
-            std::cout << env->arg(0);
+            auto& out = env->cout();
+
+            out << env->arg(0);
 
             for (size_t i = 1; i < env->arg_count(); i++) {
-                std::cout << " " << env->arg(i);
+                out << " " << env->arg(i);
             }
 
-            std::cout << std::flush;
+            out << std::flush;
 
             *ret = rebar::null;
         }
@@ -48,7 +52,7 @@ namespace rebar::library::standard {
 
         static REBAR_FUNCTION(Input) {
             std::string input;
-            std::getline(std::cin, input);
+            std::getline(env->cin(), input);
 
             *ret = env->str(input);
         }

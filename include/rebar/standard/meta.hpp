@@ -34,17 +34,10 @@ namespace rebar::library::standard {
             *ret = null;
         }
 
-        static REBAR_FUNCTION(Test) {
-            std::cout << env->arg(0) << std::endl;
-
-            *ret = null;
-        }
-
         object load(environment& a_environment) override {
             table* lib_table = new table;
 
             (*lib_table)[a_environment.str("GetFunctionInfo")] = a_environment.bind(GetFunctionInfo, "GetFunctionInfo", "REBAR::STD::META");
-            (*lib_table)[a_environment.str("Test")] = a_environment.bind(Test, "Test", "REBAR::STD::META");
 
             return lib_table;
         }

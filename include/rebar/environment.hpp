@@ -46,7 +46,6 @@ namespace rebar {
             typename std::allocator_traits<std::allocator<std::pair<std::string_view, string>>>::template rebind_alloc<ska::detailv3::sherwood_v3_entry<std::pair<std::string_view, string>>>
         > m_string_table; // I don't like it any more than you do.
 
-        table m_string_virtual_table;
 
         ska::detailv3::sherwood_v3_table<
             std::pair<object, virtual_table>,
@@ -60,12 +59,21 @@ namespace rebar {
         > m_native_class_table; // Ditto.
 
         lexer m_lexer;
+        std::unique_ptr<provider> m_provider;
+
         std::vector<std::unique_ptr<parse_unit>> m_parse_units;
+
         std::vector<function> m_functions;
         std::map<size_t, std::unique_ptr<function_info>> m_function_infos;
+        size_t m_function_id_count;
+
         table m_global_table;
-        std::unique_ptr<provider> m_provider;
-        size_t m_id_stack;
+        table m_string_virtual_table;
+
+        std::istream* m_stream_in = &std::cin;
+        std::ostream* m_stream_out = &std::cout;
+        std::ostream* m_stream_log = &std::clog;
+        std::ostream* m_stream_error = &std::cerr;
 
     public:
         environment() noexcept : m_provider(std::make_unique<default_provider>(*this)) {}
@@ -196,7 +204,7 @@ namespace rebar {
 
             emplace_function_info(func, {
                 a_name.has_value() ? std::move(a_name.value()) : "UNNAMED",
-                a_origin.has_value() ? a_origin.value() : "IMMEDIATE;"s + std::to_string(m_id_stack),
+                a_origin.has_value() ? a_origin.value() : "IMMEDIATE;"s + std::to_string(m_function_id_count),
                 0,
                 std::make_unique<function_info_source::rebar>(punit.m_plaintext, node {
                     punit.m_lex_unit.tokens(),
@@ -210,7 +218,7 @@ namespace rebar {
         }
 
         void emplace_function_info(const function a_function, function_info a_function_info) noexcept {
-            a_function_info.m_id = m_id_stack++;
+            a_function_info.m_id = m_function_id_count++;
             m_function_infos.emplace(bit_cast<size_t>(a_function.m_data), std::make_unique<function_info>(std::move(a_function_info)));
         }
 
@@ -227,7 +235,7 @@ namespace rebar {
 
             emplace_function_info(func, {
                 a_name.has_value() ? a_name.value() : "UNNAMED",
-                a_origin.has_value() ? a_origin.value() : "NATIVE;"s + std::to_string(m_id_stack),
+                a_origin.has_value() ? a_origin.value() : "NATIVE;"s + std::to_string(m_function_id_count),
                 0,
                 std::make_unique<function_info_source::native>(a_function)
             });
@@ -236,7 +244,7 @@ namespace rebar {
         }
 
         [[nodiscard]] size_t get_current_function_id_stack() const noexcept {
-            return m_id_stack;
+            return m_function_id_count;
         }
 
         // FUNCTION PARAMETERS
@@ -267,21 +275,37 @@ namespace rebar {
             m_argument_count = 0;
         }
 
-        // - FUNCTION PARAMETERS
-
-        /*
-        [[nodiscard]] table& get_metadata(function a_function) noexcept {
-
+        void set_in_stream(std::istream& a_stream) noexcept {
+            m_stream_in = &a_stream;
         }
 
-        [[nodiscard]] source_position plaintext_source(function a_function) const noexcept {
-
+        void set_out_stream(std::ostream& a_stream) noexcept {
+            m_stream_out = &a_stream;
         }
 
-        [[nodiscard]] parse_unit& function_source_unit(function a_function) noexcept {
-
+        void set_log_stream(std::ostream& a_stream) noexcept {
+            m_stream_log = &a_stream;
         }
-        */
+
+        void set_error_stream(std::ostream& a_stream) noexcept {
+            m_stream_error = &a_stream;
+        }
+
+        [[nodiscard]] std::istream& cin() noexcept {
+            return *m_stream_in;
+        }
+
+        [[nodiscard]] std::ostream& cout() noexcept {
+            return *m_stream_out;
+        }
+
+        [[nodiscard]] std::ostream& clog() noexcept {
+            return *m_stream_log;
+        }
+
+        [[nodiscard]] std::ostream& cerr() noexcept {
+            return *m_stream_error;
+        }
 
         [[nodiscard]] table& global_table() noexcept {
             return m_global_table;
