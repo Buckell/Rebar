@@ -11,6 +11,13 @@
 
 namespace rebar {
     string::string(environment& a_env, const std::string_view a_string) : m_root_pointer(a_env.str(a_string).m_root_pointer) {}
+
+    void string::deallocate() {
+        env()->m_string_table.erase(to_string_view());
+
+        std::free(m_root_pointer);
+        m_root_pointer = nullptr;
+    }
 }
 
 #endif //REBAR_STRING_IMPL_HPP
