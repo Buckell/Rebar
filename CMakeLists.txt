@@ -3,11 +3,35 @@ cmake_minimum_required(VERSION 3.8)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-include_directories(${CMAKE_SOURCE_DIR}/include)
+# SETTINGS
+set(ASMJIT_DIRECTORY "${CMAKE_SOURCE_DIR}/asmjit")
+set(PLATFORM "WINDOWS")
+set(PROFILE "DEBUG")
+
+include_directories(
+    ${CMAKE_SOURCE_DIR}/include
+    ${ASMJIT_DIRECTORY}/src
+)
 
 project(rebar)
 
-add_executable(test64 ${CMAKE_SOURCE_DIR}/test/main.cpp)
+add_compile_definitions(COMPILER_PROFILE=${COMPILER_PROFILE})
+
+if ("${PLATFORM}" STREQUAL "WINDOWS")
+    add_compile_definitions(REBAR_PLATFORM_WINDOWS)
+elseif("${PLATFORM}" STREQUAL "APPLE")
+    add_compile_definitions(REBAR_PLATFORM_APPLE)
+elseif("${PLATFORM}" STREQUAL "LINUX")
+    add_compile_definitions(REBAR_PLATFORM_LINUX)
+endif()
+
+if ("${PROFILE}" STREQUAL "DEBUG")
+    add_compile_definitions(REBAR_DEBUG)
+endif()
+
+file(GLOB_RECURSE ASMJIT_SOURCE_FILES "${ASMJIT_DIRECTORY}/src/*.cpp" "${ASMJIT_DIRECTORY}/src/*.c")
+
+add_executable(test64 ${CMAKE_SOURCE_DIR}/test/main.cpp ${ASMJIT_SOURCE_FILES})
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GCC" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     add_definitions(-pthread -Wall -Wextra -Wconversion -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wcast-qual -Wunused -Woverloaded-virtual -Wno-noexcept-type -Wpedantic -fsanitize=address -fsanitize=undefined -msse2 -m64 -g)
