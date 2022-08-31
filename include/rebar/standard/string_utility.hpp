@@ -20,7 +20,7 @@ namespace rebar::library::standard {
                 a_this.get_object<std::vector<std::string>>().push_back(rhs.to_string());
             };
 
-            a_string_builder[a_environment.str("ToString")] = a_environment.bind([](environment* env) -> object {
+            a_string_builder[a_environment.str("ToString")] = a_environment.bind([](object* ret, environment* env) -> void {
                 object this_object = env->arg(0);
 
                 auto& strings = this_object.get_native_object().get_object<std::vector<std::string>>();
@@ -38,16 +38,16 @@ namespace rebar::library::standard {
                     final += str;
                 }
 
-                return env->str(final);
+                *ret = env->str(final);
             }, "ToString", "REBAR::STD::STRING_UTILITY::STRING_BUILDER");
 
-            a_string_builder[a_environment.str("Append")] = a_environment.bind([](environment* env) -> object {
+            a_string_builder[a_environment.str("Append")] = a_environment.bind([](object* ret, environment* env) -> void {
                 object this_object = env->arg(0);
                 object obj = env->arg(1);
 
                 this_object.get_native_object().get_object<std::vector<std::string>>().push_back(obj.to_string());
 
-                return null;
+                *ret = null;
             }, "Append", "REBAR::STD::STRING_UTILITY::STRING_BUILDER");
         }
 

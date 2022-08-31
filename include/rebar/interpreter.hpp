@@ -37,7 +37,9 @@ namespace rebar {
 
         protected:
             object internal_call() override {
-                return m_function(&m_environment);
+                object return_val;
+                m_function(&return_val, &m_environment);
+                return return_val;
             }
         };
 

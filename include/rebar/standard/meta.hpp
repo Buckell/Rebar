@@ -5,36 +5,46 @@
 #ifndef REBAR_META_HPP
 #define REBAR_META_HPP
 
+#include "macro.hpp"
+
 #include "../rebar.hpp"
 
 namespace rebar::library::standard {
     struct meta : public library {
         meta() : library(usage::explicit_include) {}
 
-        static object GetFunctionInfo(environment* a_env) {
-            auto func_object = a_env->arg(0);
+        static REBAR_FUNCTION(GetFunctionInfo) {
+            auto func_object = env->arg(0);
 
             if (func_object.is_function()) {
-                function func = func_object.get_function(*a_env);
+                function func = func_object.get_function(*env);
 
-                function_info& info = a_env->get_function_info(func);
+                function_info& info = env->get_function_info(func);
 
                 table* info_table = new table;
 
-                (*info_table)[a_env->str("Name")] = a_env->str(info.get_name());
-                (*info_table)[a_env->str("Origin")] = a_env->str(info.get_origin());
-                (*info_table)[a_env->str("ID")] = static_cast<integer>(info.get_id());
+                (*info_table)[env->str("Name")] = env->str(info.get_name());
+                (*info_table)[env->str("Origin")] = env->str(info.get_origin());
+                (*info_table)[env->str("ID")] = static_cast<integer>(info.get_id());
 
-                return info_table;
+                *ret = info_table;
+                return;
             }
 
-            return null;
+            *ret = null;
+        }
+
+        static REBAR_FUNCTION(Test) {
+            std::cout << env->arg(0) << std::endl;
+
+            *ret = null;
         }
 
         object load(environment& a_environment) override {
             table* lib_table = new table;
 
             (*lib_table)[a_environment.str("GetFunctionInfo")] = a_environment.bind(GetFunctionInfo, "GetFunctionInfo", "REBAR::STD::META");
+            (*lib_table)[a_environment.str("Test")] = a_environment.bind(Test, "Test", "REBAR::STD::META");
 
             return lib_table;
         }

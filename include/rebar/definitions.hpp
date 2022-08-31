@@ -241,7 +241,30 @@ namespace rebar {
     class object;
     class environment;
 
-    using callable = object (*)(environment*);
+    using callable = void (*)(object*, environment*);
+
+    struct platform {
+        constexpr static size_t windows = 0x1;
+        constexpr static size_t apple = 0x1 << 1;
+        constexpr static size_t linux = 0x1 << 2;
+        constexpr static size_t x64 = 0x1 << 3;
+        constexpr static size_t x86 = 0x1 << 4;
+#if defined(REBAR_PLATFORM_WINDOWS)
+        constexpr static size_t current = windows | (sizeof(void*) == 8 ? x64 : x86);
+#elif defined(REBAR_PLATFORM_LINUX)
+        constexpr static size_t current = linux | (sizeof(void*) == 8 ? x64 : x86);
+#elif defined(REBAR_PLATFORM_APPLE)
+        constexpr static size_t current = apple | (sizeof(void*) == 8 ? x64 : x86);
+#endif
+    };
+
+#ifdef REBAR_DEBUG
+    constexpr bool debug_mode = true;
+#else
+    constexpr bool debug_mode = false;
+#endif
+
+    constexpr size_t object_data_offset = sizeof(size_t);
 }
 
 #endif //REBAR_DEFINITIONS_HPP

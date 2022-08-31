@@ -5,13 +5,15 @@
 #ifndef REBAR_BASE_HPP
 #define REBAR_BASE_HPP
 
+#include "macro.hpp"
+
 #include "../rebar.hpp"
 
 namespace rebar::library::standard {
     struct base : public library {
         base() : library(usage::implicit_include) {}
 
-        static rebar::object PrintLn(rebar::environment* env) {
+        static REBAR_FUNCTION(PrintLn) {
             if (env->arg_count() == 0) {
                 std::cout << '\n';
             }
@@ -19,42 +21,43 @@ namespace rebar::library::standard {
             std::cout << env->arg(0);
 
             for (size_t i = 1; i < env->arg_count(); i++) {
-                std::cout << "    " << env->arg(i);
+                std::cout << " " << env->arg(i);
             }
 
             std::cout << std::endl;
 
-            return rebar::null;
+            *ret = rebar::null;
         }
 
-        static rebar::object Print(rebar::environment* env) {
+        static REBAR_FUNCTION(Print) {
             std::cout << env->arg(0);
 
             for (size_t i = 1; i < env->arg_count(); i++) {
-                std::cout << "    " << env->arg(i);
+                std::cout << " " << env->arg(i);
             }
 
             std::cout << std::flush;
 
-            return rebar::null;
+            *ret = rebar::null;
         }
 
-        static rebar::object Include(rebar::environment* env) {
+        static REBAR_FUNCTION(Include) {
             std::string_view sv = env->arg(0).get_string().to_string_view();
-            return load_library(*env, sv);
+            *ret = load_library(*env, sv);
         }
 
-        static rebar::object Input(rebar::environment* env) {
+        static REBAR_FUNCTION(Input) {
             std::string input;
             std::getline(std::cin, input);
-            return env->str(input);
+
+            *ret = env->str(input);
         }
 
         object load(environment& a_environment) override {
             auto& global_table = a_environment.global_table();
 
             const auto define_global_function = [&a_environment, &global_table](const std::string_view a_identifier, callable a_function) noexcept {
-                global_table[a_environment.str(a_identifier)] = a_environment.bind(a_function);
+                global_table[a_environment.str(a_identifier)] = a_environment.bind(a_function, std::string(a_identifier), "REBAR::STD::BASE");
             };
 
             define_global_function("PrintLn", PrintLn);
