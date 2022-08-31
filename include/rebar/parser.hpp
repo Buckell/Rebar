@@ -824,11 +824,17 @@ namespace rebar {
                     }
                 }
             } else if (a_nodes[1].is_group()) {
-                return {
-                    separator::operation_call,
-                    a_nodes[0],
-                    a_nodes[1]
-                };
+                if (a_nodes[1].get_expression().empty()) {
+                    node::abstract_syntax_tree ast{ separator::operation_call };
+                    ast.add_operand(a_nodes[0]);
+                    return ast;
+                } else {
+                    return {
+                        separator::operation_call,
+                        a_nodes[0],
+                        a_nodes[1]
+                    };
+                }
             } else if (a_nodes[1].is_argument_list()) {
                 node::abstract_syntax_tree ast{ separator::operation_call };
                 ast.add_operand(a_nodes[0]);
@@ -963,11 +969,17 @@ namespace rebar {
                 };
 
                 if (end_node.is_group()) {
-                    return {
-                        separator::operation_call,
-                        lhs,
-                        end_node
-                    };
+                    if (end_node.get_expression().empty()) {
+                        node::abstract_syntax_tree ast{ separator::operation_call };
+                        ast.add_operand(lhs);
+                        return ast;
+                    } else {
+                        return {
+                                separator::operation_call,
+                                lhs,
+                                end_node
+                        };
+                    }
                 } else if (end_node.is_argument_list()) {
                     const auto& args = end_node.get_argument_list();
 
@@ -1280,7 +1292,7 @@ namespace rebar {
                                 parse_group(value_tokens, value_source_positions)
                             );
                         } else if (entry_tokens[0] == separator::selector_open) {
-                            span<token>::iterator key_expression_end = find_next(entry_tokens, separator::selector_close, separator::selector_open, separator::selector_close);
+                            span<token>::iterator key_expression_end = find_next(entry_tokens.subspan(1), separator::selector_close, separator::selector_open, separator::selector_close);
 
                             span<token> key_tokens(entry_tokens.begin() + 1, key_expression_end);
                             span<source_position> key_source_positions = a_source_positions.subspan(key_tokens.begin() - a_tokens.begin(), key_tokens.size());
