@@ -18,7 +18,7 @@ namespace rebar {
         //
         // Similar to Pascal strings. Optimized for Rebar object storage.
 
-        // [size_t size][size_t reference count][char[] data]
+        // [size_t size][size_t reference count][environment* env][char[] data]
 
         void* m_root_pointer;
 
@@ -38,7 +38,7 @@ namespace rebar {
         }
 
         [[nodiscard]] const char* c_str() const noexcept {
-            return reinterpret_cast<char*>(m_root_pointer) + (sizeof(size_t) * 2);
+            return reinterpret_cast<char*>(m_root_pointer) + (sizeof(size_t) * 3);
         }
 
         [[nodiscard]] size_t length() const noexcept {
@@ -47,6 +47,10 @@ namespace rebar {
 
         [[nodiscard]] size_t reference_count() const noexcept {
             return reinterpret_cast<size_t*>(m_root_pointer)[1];
+        }
+
+        [[nodiscard]] environment* env() const noexcept {
+            return reinterpret_cast<environment**>(m_root_pointer)[2];
         }
 
         [[nodiscard]] size_t size() const noexcept {
@@ -73,8 +77,22 @@ namespace rebar {
             return (lhs << rhs.to_string_view());
         }
 
+        inline size_t reference(const size_t a_increment = 1) noexcept {
+            return reinterpret_cast<size_t*>(m_root_pointer)[1] += a_increment;
+        }
+
+        inline size_t dereference(const size_t a_decrement = 1) noexcept {
+            size_t ref_count = (reinterpret_cast<size_t*>(m_root_pointer)[1] -= a_decrement);
+
+            if (ref_count == 0) {
+                deallocate();
+            }
+
+            return ref_count;
+        }
+
     private:
-        explicit string(const std::string_view a_string) noexcept : m_root_pointer(reinterpret_cast<size_t*>(std::malloc((sizeof(size_t) * 2) + a_string.size() + 1))) {
+        explicit string(environment* a_env, const std::string_view a_string) noexcept : m_root_pointer(reinterpret_cast<size_t*>(std::malloc((sizeof(size_t) * 3) + a_string.size() + 1))) {
             auto* root_pointer = reinterpret_cast<size_t*>(m_root_pointer);
 
             // String size/length.
@@ -83,32 +101,17 @@ namespace rebar {
             // String reference counter.
             root_pointer[1] = 1;
 
+            root_pointer[2] = reinterpret_cast<size_t>(a_env);
+
             // String data.
-            memcpy(reinterpret_cast<char*>(m_root_pointer) + (sizeof(size_t) * 2), a_string.data(), a_string.size());
-            *(reinterpret_cast<char*>(m_root_pointer) + a_string.size() + (sizeof(size_t) * 2)) = 0;
+            memcpy(reinterpret_cast<char*>(m_root_pointer) + (sizeof(size_t) * 3), a_string.data(), a_string.size());
+            *(reinterpret_cast<char*>(m_root_pointer) + a_string.size() + (sizeof(size_t) * 3)) = 0;
         }
 
-        void deallocate() {
-            std::free(m_root_pointer);
-            m_root_pointer = nullptr;
-        }
+        void deallocate();
 
         void set_reference_count(const size_t a_count) noexcept {
             reinterpret_cast<size_t*>(m_root_pointer)[1] = a_count;
-        }
-
-        size_t reference(const size_t a_increment = 1) noexcept {
-            return reinterpret_cast<size_t*>(m_root_pointer)[1] += a_increment;
-        }
-
-        size_t dereference(const size_t a_decrement = 1) noexcept {
-            size_t ref_count = (reinterpret_cast<size_t*>(m_root_pointer)[1] -= a_decrement);
-
-            if (ref_count == 0) {
-                deallocate();
-            }
-
-            return ref_count;
         }
 
         friend class environment;
