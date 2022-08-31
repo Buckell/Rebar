@@ -178,6 +178,10 @@ namespace rebar {
         }
 
         void dereference();
+
+        [[nodiscard]] inline size_t get_reference_count() const noexcept {
+            return *(reinterpret_cast<size_t*>(m_root_pointer) + 1);
+        }
     };
 }
 
