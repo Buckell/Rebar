@@ -114,9 +114,9 @@ namespace rebar {
             case type::native_object:
                 return "NATIVE_OBJECT";
             case type::function:
-                return "FUNCTION "s + std::to_string(m_data);
+                return "Function<"s + std::to_string(m_data) + ">";
             case type::table:
-                return "TABLE "s + std::to_string(m_data);
+                return "Table<"s + std::to_string(m_data) + ">";
             default:
                 return std::to_string(m_data);
         }
@@ -689,7 +689,7 @@ namespace rebar {
         }
     }
 
-    object& object::index(environment& a_environment, const object rhs) {
+    object& object::index(environment& a_environment, const object& rhs) {
         switch (m_type) {
             case type::null:
                 std::cout << "NULL INDEX" << std::endl;
@@ -712,7 +712,7 @@ namespace rebar {
         }
     }
 
-    object object::select(environment& a_environment, const object rhs) {
+    object object::select(environment& a_environment, const object& rhs) {
         switch (m_type) {
             case type::string:
                 if (rhs.is_integer()) {
@@ -743,7 +743,7 @@ namespace rebar {
         }
     }
 
-    object object::select(environment& a_environment, const object rhs1, const object rhs2) {
+    object object::select(environment& a_environment, const object& rhs1, const object& rhs2) {
         switch (m_type) {
             case type::string:
                 if (rhs1.is_integer() && rhs2.is_integer()) {
@@ -845,6 +845,49 @@ namespace rebar {
                 break;
             default:
                 break;
+        }
+    }
+
+    size_t object::get_reference_count(object& a_object) {
+        switch (a_object.object_type()) {
+            case type::string:
+                return a_object.get_string().reference_count();
+            case type::table:
+                return a_object.get_table().m_reference_count;
+            case type::array:
+                return a_object.get_array().get_reference_count();
+            case type::native_object:
+                return a_object.get_native_object().get_reference_count();
+            default:
+                return 0;
+        }
+    }
+
+    void object::block_dereference(object* a_objects, size_t a_object_count) {
+        for (size_t i = 0; i < a_object_count; ++i) {
+            object& obj = a_objects[i];
+
+            if (obj.m_type > object::simple_type_end_boundary) {
+                switch (obj.m_type) {
+                    case type::string:
+                        obj.get_string().dereference();
+                        break;
+                    case type::table:
+                        if (--(obj.get_table().m_reference_count) == 0) {
+                            delete &obj.get_table();
+                        }
+
+                        break;
+                    case type::array:
+                        obj.get_array().dereference();
+                        break;
+                    case type::native_object:
+                        obj.get_native_object().dereference();
+                        break;
+                    default:
+                        break;
+                }
+            }
         }
     }
 }

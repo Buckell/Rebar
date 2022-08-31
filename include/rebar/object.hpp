@@ -40,7 +40,11 @@ namespace rebar {
         size_t m_data;
 
     public:
-        constexpr object(const type a_type, const size_t a_data) noexcept : m_type(a_type), m_data(a_data) {}
+        object(const type a_type, const size_t a_data) noexcept : m_type(a_type), m_data(a_data) {
+            if (a_type > simple_type_end_boundary) {
+                reference(*this);
+            }
+        }
 
         constexpr object() noexcept : m_type(type::null), m_data(0) {}
         object(const integer a_integer) noexcept : m_type(type::integer), m_data(*reinterpret_cast<const size_t*>(&a_integer)) {}
@@ -81,23 +85,27 @@ namespace rebar {
         }
 
         object& operator = (const object& a_object) noexcept {
-            dereference(*this);
+            if (a_object.is_simple_type()) {
+                m_type = a_object.m_type;
+                m_data = a_object.m_data;
+            } else {
+                dereference(*this);
 
-            m_type = a_object.m_type;
-            m_data = a_object.m_data;
+                m_type = a_object.m_type;
+                m_data = a_object.m_data;
 
-            reference(*this);
+                reference(*this);
+            }
 
             return *this;
         }
 
         object& operator = (object&& a_object) noexcept {
-            dereference(*this);
-
             m_type = a_object.m_type;
             m_data = a_object.m_data;
 
-            reference(*this);
+            a_object.m_type = type::null;
+            a_object.m_data = 0;
 
             return *this;
         }
@@ -213,9 +221,9 @@ namespace rebar {
         object new_object_v(environment& a_environment, t_objects&&... a_objects);
         object new_object(environment& a_environment, span<object> a_objects);
 
-        [[nodiscard]] object& index(environment& a_environment, const object rhs);
-        [[nodiscard]] object select(environment& a_environment, const object rhs);
-        [[nodiscard]] object select(environment& a_environment, const object rhs1, const object rhs2);
+        [[nodiscard]] object& index(environment& a_environment, const object& rhs);
+        [[nodiscard]] object select(environment& a_environment, const object& rhs);
+        [[nodiscard]] object select(environment& a_environment, const object& rhs1, const object& rhs2);
 
         [[nodiscard]] std::string to_string() noexcept;
 
@@ -298,6 +306,9 @@ namespace rebar {
         // TODO: Complete dereference function.
         static void dereference(object& a_object);
         static void reference(object& a_object);
+        static size_t get_reference_count(object& a_object);
+
+        static void block_dereference(object* a_objects, size_t a_object_count);
 
         [[nodiscard]] bool operator == (const object rhs) const noexcept {
             if (m_type != rhs.m_type) {
