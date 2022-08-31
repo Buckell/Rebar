@@ -30,32 +30,33 @@ namespace rebar {
 
     class environment {
         friend class function;
+        friend class string;
 
         size_t m_argument_count;
         std::array<object, 16> m_arguments;
 
         ska::detailv3::sherwood_v3_table<
-        std::pair<std::string_view, string>,
-        std::string_view,
-        xxh_string_view_hash,
-        ska::detailv3::KeyOrValueHasher<std::string_view, std::pair<std::string_view, string>, xxh_string_view_hash>,
-        std::equal_to<std::string_view>,
-        ska::detailv3::KeyOrValueEquality<std::string_view, std::pair<std::string_view, string>, std::equal_to<std::string_view>>,
-        std::allocator<std::pair<std::string_view, string>>,
-        typename std::allocator_traits<std::allocator<std::pair<std::string_view, string>>>::template rebind_alloc<ska::detailv3::sherwood_v3_entry<std::pair<std::string_view, string>>>
+            std::pair<std::string_view, string>,
+            std::string_view,
+            xxh_string_view_hash,
+            ska::detailv3::KeyOrValueHasher<std::string_view, std::pair<std::string_view, string>, xxh_string_view_hash>,
+            std::equal_to<std::string_view>,
+            ska::detailv3::KeyOrValueEquality<std::string_view, std::pair<std::string_view, string>, std::equal_to<std::string_view>>,
+            std::allocator<std::pair<std::string_view, string>>,
+            typename std::allocator_traits<std::allocator<std::pair<std::string_view, string>>>::template rebind_alloc<ska::detailv3::sherwood_v3_entry<std::pair<std::string_view, string>>>
         > m_string_table; // I don't like it any more than you do.
 
         table m_string_virtual_table;
 
         ska::detailv3::sherwood_v3_table<
-        std::pair<object, virtual_table>,
-        object,
-        std::hash<object>,
-        ska::detailv3::KeyOrValueHasher<object, std::pair<object, virtual_table>, std::hash<object>>,
-        std::equal_to<object>,
-        ska::detailv3::KeyOrValueEquality<object, std::pair<object, virtual_table>, std::equal_to<object>>,
-        std::allocator<std::pair<object, virtual_table>>,
-        typename std::allocator_traits<std::allocator<std::pair<object, virtual_table>>>::template rebind_alloc<ska::detailv3::sherwood_v3_entry<std::pair<object, virtual_table>>>
+            std::pair<object, virtual_table>,
+            object,
+            std::hash<object>,
+            ska::detailv3::KeyOrValueHasher<object, std::pair<object, virtual_table>, std::hash<object>>,
+            std::equal_to<object>,
+            ska::detailv3::KeyOrValueEquality<object, std::pair<object, virtual_table>, std::equal_to<object>>,
+            std::allocator<std::pair<object, virtual_table>>,
+            typename std::allocator_traits<std::allocator<std::pair<object, virtual_table>>>::template rebind_alloc<ska::detailv3::sherwood_v3_entry<std::pair<object, virtual_table>>>
         > m_native_class_table; // Ditto.
 
         lexer m_lexer;
@@ -79,7 +80,7 @@ namespace rebar {
             auto found = m_string_table.find(a_string);
 
             if (found == m_string_table.cend()) {
-                string created_string(a_string);
+                string created_string(this, a_string);
 
                 m_string_table.emplace(created_string.to_string_view(), std::move(created_string));
 
@@ -91,6 +92,14 @@ namespace rebar {
 
         [[nodiscard]] table& get_string_virtual_table() noexcept {
             return m_string_virtual_table;
+        }
+
+        [[nodiscard]] object* get_arguments_pointer() noexcept {
+            return m_arguments.data();
+        }
+
+        [[nodiscard]] size_t* get_arguments_size_pointer() noexcept {
+            return &m_argument_count;
         }
 
         virtual_table& register_native_class(const object a_identifier, virtual_table a_table = {}) {
@@ -236,7 +245,7 @@ namespace rebar {
             return m_argument_count;
         }
 
-        [[nodiscard]] object arg(const size_t a_index) const noexcept {
+        [[nodiscard]] const object& arg(const size_t a_index) const noexcept {
             return m_arguments[a_index];
         }
 
