@@ -190,7 +190,6 @@ namespace rebar {
                 "BREAK"sv,
                 "CONTINUE"sv,
                 "CLASS"sv,
-                "NEW"sv,
                 "FUNCTION RETURN"sv,
                 "TRUE"sv,
                 "FALSE"sv,
