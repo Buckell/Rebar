@@ -1,0 +1,13 @@
+{
+    "name": "Simple Print",
+    "code": [
+        "PrintLn(\"Hello, world!\");",
+        "PrintLn(\"Goodbye, world!\");",
+        "PrintLn(\"Hello, world!\");"
+    ],
+    "output": [
+        "Hello, world!",
+        "Goodbye, world!",
+        "Hello, world!"
+    ]
+}

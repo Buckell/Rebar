@@ -1,0 +1,11 @@
+{
+    "name": "Simple If-Statement",
+    "code": [
+        "local val = \"Hello, world!\";",
+        "if (val == \"Hello, world!\") {",
+        "   return true;",
+        "}",
+        "return false;"
+    ],
+    "return": true
+}

@@ -133,4 +133,4 @@ local function_info = Meta::GetFunctionInfo(PrintLn);
 
 PrintLn(function_info.Origin, function_info.Name);
 
-return "f";
+return true;

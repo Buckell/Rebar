@@ -1,9 +1,10 @@
 #include <iostream>
+#include <filesystem>
 
 #include "rebar/rebar.hpp"
 #include "rebar/standard.hpp"
 
-#include <emmintrin.h>
+#include "nlohmann/json.hpp"
 
 int main() {
     //rebar::environment env(rebar::use_provider<rebar::interpreter>);
@@ -96,13 +97,105 @@ int main() {
 
     rebar::lexer& code_lexer = renv.code_lexer();
     rebar::parse_unit p_unit = rebar::parse(code_lexer, file_contents);
+
+    for (auto& tok : p_unit.m_lex_unit.tokens()) {
+        std::cout << tok.to_string() << std::endl;
+    }
     std::cout << p_unit.string_representation() << std::endl;
 
     auto f = renv.compile_string(file_contents);
 
     rebar::object o = f();
 
-    std::cout << o << std::endl;
+    std::cout << o << '\n' << std::endl;
+
+    if (rebar::debug_mode) {
+        ((rebar::compiler&)renv.execution_provider()).enable_assembly_debug_output(false);
+    }
+
+    std::filesystem::path test_case_directory("../test/cases");
+
+    for (const auto& file : std::filesystem::directory_iterator(test_case_directory)) {
+        std::ifstream file_stream(file.path());
+        nlohmann::json file_json = nlohmann::json::parse(file_stream);
+
+        std::string name = file_json["name"];
+
+        const auto& code_data = file_json["code"];
+
+        std::string code;
+
+        if (code_data.is_array()) {
+            code += code_data[0];
+
+            for (size_t i = 1; i < code_data.size(); ++i) {
+                code += '\n';
+                code += code_data[i];
+            }
+        } else {
+            code = code_data;
+        }
+
+        auto func = renv.compile_string(code, file.path().stem().string(), "TEST CASE");
+
+        std::stringstream out_stream;
+        renv.set_out_stream(out_stream);
+
+        auto ret = func();
+
+        const auto& return_target = file_json["return"];
+
+        bool return_test = true;
+
+        if (return_target.is_string()) {
+            return_test = ret.is_string() && return_target.get<std::string_view>() == ret.get_string().to_string_view();
+        } else if (return_target.is_number_integer()) {
+            return_test = ret.is_integer() && return_target.get<rebar::integer>() == ret.get_integer();
+        } else if (return_target.is_number_float()) {
+            return_test = ret.is_number() && return_target.get<rebar::number>() == ret.get_number();
+        } else if (return_target.is_boolean()) {
+            return_test = ret.is_boolean() && return_target.get<bool>() == ret.get_boolean();
+        }
+
+        bool output_test = true;
+
+        const auto& output_data = file_json["output"];
+
+        if (!output_data.is_null()) {
+            std::string output;
+
+            if (output_data.is_array()) {
+                for (size_t i = 0; i < output_data.size(); ++i) {
+                    output += output_data[i];
+                    output += "\n";
+                }
+            } else {
+                output = output_data;
+            }
+
+            output.erase(std::remove_if(output.begin(), output.end(), [] (char c) noexcept -> bool {
+                return c == '\r';
+            }), output.cend());
+
+            std::string actual_output = out_stream.str();
+            actual_output.erase(std::remove_if(actual_output.begin(), actual_output.end(), [] (char c) noexcept -> bool {
+                return c == '\r';
+            }), actual_output.cend());
+
+            if (actual_output.size() == output.size()) {
+                for (size_t i = 0; i < output.size(); ++i) {
+                    if (actual_output[i] != output[i]) {
+                        output_test = false;
+                        break;
+                    }
+                }
+            } else {
+                output_test = false;
+            }
+        }
+
+        std::cout << "[TEST] " << name << " | RESULT-CHECK: " << (return_test ? "PASS" : "FAIL") << ", OUTPUT-CHECK: " << (output_test ? "PASS" : "FAIL") << std::endl;
+    }
 
     return 0;
 }
