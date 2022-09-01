@@ -161,9 +161,10 @@ int main() {
 
         const auto& output_data = file_json["output"];
 
-        if (!output_data.is_null()) {
-            std::string output;
+        std::string output;
+        std::string actual_output;
 
+        if (!output_data.is_null()) {
             if (output_data.is_array()) {
                 for (size_t i = 0; i < output_data.size(); ++i) {
                     output += output_data[i];
@@ -177,7 +178,7 @@ int main() {
                 return c == '\r';
             }), output.cend());
 
-            std::string actual_output = out_stream.str();
+            actual_output = out_stream.str();
             actual_output.erase(std::remove_if(actual_output.begin(), actual_output.end(), [] (char c) noexcept -> bool {
                 return c == '\r';
             }), actual_output.cend());
@@ -194,7 +195,20 @@ int main() {
             }
         }
 
-        std::cout << "[TEST] " << name << " | RESULT-CHECK: " << (return_test ? "PASS" : "FAIL") << ", OUTPUT-CHECK: " << (output_test ? "PASS" : "FAIL") << std::endl;
+        std::cout << "[TEST] " << (return_test && output_test ? "PASS" : "FAIL") << " | " << name << " | RESULT-CHECK: " << (return_test ? "PASS" : "FAIL") << ", OUTPUT-CHECK: " << (output_test ? "PASS" : "FAIL") << std::endl;
+
+        if (!output_test) {
+            std::cout << "--- Expected ---\n";
+            std::cout << output;
+            std::cout << "----------------" << std::endl;
+            std::cout << "--- Actual ---\n";
+            std::cout << actual_output;
+            std::cout << "----------------" << std::endl;
+        }
+
+        if (!return_test) {
+            std::cout << "RETURNED " << ret << " (EXPECTED " << return_target << ")" << std::endl;
+        }
     }
 
     return 0;
