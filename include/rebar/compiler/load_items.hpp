@@ -6,6 +6,7 @@
 #define REBAR_LOAD_ITEMS_HPP
 
 #include "ext.hpp"
+#include "macro.hpp"
 
 #include "../compiler.hpp"
 
@@ -16,9 +17,7 @@ namespace rebar {
 
         switch (a_token.m_type) {
             case token::type::string_literal:
-                if constexpr (debug_mode) {
-                    cc.commentf("Loading string literal. (\"%s\")", a_token.get_string_literal().data());
-                }
+                REBAR_CC_DEBUG("Loading string literal. (\"%s\")", a_token.get_string_literal().data());
 
                 cc.mov(out_type, type::string);
                 cc.movabs(out_data, a_ctx.source.emplace_string_dependency(a_token.get_string_literal()).data());
@@ -27,21 +26,45 @@ namespace rebar {
                 load_identifier(a_ctx, a_token.get_identifier(), a_side);
                 break;
             case token::type::integer_literal:
-                if constexpr (debug_mode) {
-                    cc.commentf("Loading integer literal. (%d)", a_token.get_integer_literal());
-                }
+                REBAR_CC_DEBUG("Loading integer literal. (%d)", a_token.get_integer_literal());
 
                 cc.mov(out_type, type::integer);
                 cc.movabs(out_data, a_token.get_integer_literal());
                 break;
             case token::type::number_literal:
-                if constexpr (debug_mode) {
-                    cc.commentf("Loading number literal. (%f)", a_token.get_number_literal());
-                }
+                REBAR_CC_DEBUG("Loading number literal. (%f)", a_token.get_number_literal());
 
                 cc.mov(out_type, type::number);
                 cc.movabs(out_data, a_token.get_number_literal());
                 break;
+            case token::type::keyword:
+                switch (a_token.get_keyword()) {
+                    case keyword::literal_true:
+                        REBAR_CC_DEBUG("Loading boolean literal. (true)");
+
+                        cc.mov(out_type, type::boolean);
+                        cc.mov(out_data, true);
+
+                        break;
+                    case keyword::literal_false:
+                        REBAR_CC_DEBUG("Loading boolean literal. (false)");
+
+                        cc.mov(out_type, type::boolean);
+                        cc.xor_(out_data, out_data);
+
+                        break;
+                    case keyword::literal_null:
+                        REBAR_CC_DEBUG("Loading null literal.");
+
+                        cc.xor_(out_type, out_type);
+                        cc.xor_(out_data, out_data);
+
+                        break;
+                    default:
+                        break;
+                }
+                break;
+
             default: // Theoretically, this should never happen.
                 break;
         }
