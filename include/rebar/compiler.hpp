@@ -62,6 +62,10 @@ namespace rebar {
             return return_value;
         }
 
+        void enable_assembly_debug_output(bool a_enable) {
+            m_logger.setFile(a_enable ? stdout : nullptr);
+        }
+
         struct node_detail {
             constexpr static size_t identifier_as_string = 0x1;
         };
