@@ -256,6 +256,7 @@ namespace rebar {
             case separator::namespace_index:
             case separator::direct:
             case separator::dot:
+            case separator::operation_index:
                 if (a_expression.count() == 2) {
                     REBAR_CC_DEBUG("Starting select operation.");
 
@@ -289,8 +290,6 @@ namespace rebar {
             case separator::operation_prefix_decrement:
                 break;
             case separator::operation_postfix_decrement:
-                break;
-            case separator::operation_index:
                 break;
             case separator::operation_call: {
                 const auto& callable_node = a_expression.get_operand(0);
