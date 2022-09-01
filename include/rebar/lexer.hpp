@@ -18,6 +18,10 @@
 #include "token.hpp"
 
 namespace rebar {
+    [[nodiscard]] constexpr bool is_identifier_char(char c) noexcept {
+        return ('a' < c && c < 'z') || ('A' < c && c < 'Z') || ('0' < c && c < '9') || ('a' < c && c < 'z') || c == '_';
+    }
+
     struct symbol_mapping {
         bool interrupter;
         token replaced;
@@ -394,7 +398,7 @@ namespace rebar {
 
                         if (a_string.size() > scan_index + next_token->first.size()) {
                             char postceding_token = a_string[scan_index + next_token->first.size()];
-                            if (!next_token->second.interrupter && !(postceding_token == ' ' || postceding_token == '\n' || postceding_token == '\t' || postceding_token == '\r')) {
+                            if (!next_token->second.interrupter && is_identifier_char(postceding_token)) {
                                 identifier_start_index = scan_index;
                                 identifier_mode = true;
                                 scan_index += next_token->first.size();
