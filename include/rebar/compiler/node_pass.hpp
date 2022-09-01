@@ -106,8 +106,6 @@ namespace rebar {
                 table_invoke->setRet(0, a_ctx.identifier);
 
                 for (const auto& entry : tbl.m_entries) {
-                    std::cout << "IMM TBL ENT " << entry.first.to_string() << " " << entry.second.to_string() << std::endl;
-
                     REBAR_CC_DEBUG("Immediate table entry.");
 
                     a_ctx.push_identifier();
