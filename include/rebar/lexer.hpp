@@ -396,6 +396,7 @@ namespace rebar {
                             }
                         }
 
+                        // Prevent non-interrupting keywords/operators from being parsed in identifiers.
                         if (a_string.size() > scan_index + next_token->first.size()) {
                             char postceding_token = a_string[scan_index + next_token->first.size()];
                             if (!next_token->second.interrupter && is_identifier_char(postceding_token)) {
