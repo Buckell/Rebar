@@ -473,11 +473,11 @@ namespace rebar {
 
     object object::equals(environment& a_environment, object lhs, const object rhs) {
         if (lhs.m_type != rhs.m_type) {
-            return false;
+            return boolean_false;
         }
 
         if (lhs.is_simply_comparable()) {
-            return lhs.m_data == rhs.m_data;
+            return object(type::boolean, lhs.m_data == rhs.m_data);
         } else {
             switch (lhs.m_type) {
                 case type::native_object:

@@ -326,6 +326,8 @@ namespace rebar {
     using type = object::type;
 
     inline object null { type::null, 0 };
+    inline object boolean_true { type::boolean, true };
+    inline object boolean_false { type::boolean, false };
 }
 
 template <>
