@@ -182,12 +182,12 @@ int main() {
 
             output.erase(std::remove_if(output.begin(), output.end(), [] (char c) noexcept -> bool {
                 return c == '\r';
-            }), output.cend());
+            }), output.end());
 
             actual_output = out_stream.str();
             actual_output.erase(std::remove_if(actual_output.begin(), actual_output.end(), [] (char c) noexcept -> bool {
                 return c == '\r';
-            }), actual_output.cend());
+            }), actual_output.end());
 
             if (actual_output.size() == output.size()) {
                 for (size_t i = 0; i < output.size(); ++i) {
