@@ -1,0 +1,20 @@
+{
+    "name": "Batch Operator Test",
+    "code": [
+        "local table = {};",
+        "local a = 1;",
+        "local b = 2;",
+        "PrintLn(\"Index & Assignment:\", table.a, table.a = 10, table.a);",
+        "table.b = 20;",
+        "PrintLn(\"Index:\", table.b);",
+        "a = 10; b = 20; a = b;",
+        "PrintLn(\"Assignment:\", a, b);",
+        "PrintLn(\"Equality:\", a == b, b = 10, a == b);"
+    ],
+    "output": [
+        "Index & Assignment: null 10 10",
+        "Index: 20",
+        "Assignment: 20 20",
+        "Equality: true 10 false"
+    ]
+}

@@ -1,0 +1,9 @@
+{
+    "name": "Meta Library GetFunctionInfo Test",
+    "code": [
+        "local Meta = Include(\"Meta\");",
+        "local println_func_info = Meta::GetFunctionInfo(PrintLn);",
+        "return println_func_info.Name;"
+    ],
+    "return": "PrintLn"
+}
