@@ -98,9 +98,6 @@ int main() {
     rebar::lexer& code_lexer = renv.code_lexer();
     rebar::parse_unit p_unit = rebar::parse(code_lexer, file_contents);
 
-    for (auto& tok : p_unit.m_lex_unit.tokens()) {
-        std::cout << tok.to_string() << std::endl;
-    }
     std::cout << p_unit.string_representation() << std::endl;
 
     auto f = renv.compile_string(file_contents);
@@ -123,8 +120,6 @@ int main() {
 
         max_name_size = std::max(max_name_size, file_json["name"].get<std::string_view>().size());
     }
-
-    std::cout << max_name_size << std::endl;
 
     for (const auto& file : std::filesystem::directory_iterator(test_case_directory)) {
         std::ifstream file_stream(file.path());
