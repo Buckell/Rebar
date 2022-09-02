@@ -115,6 +115,17 @@ int main() {
 
     std::filesystem::path test_case_directory("../test/cases");
 
+    size_t max_name_size = 0;
+
+    for (const auto& file : std::filesystem::directory_iterator(test_case_directory)) {
+        std::ifstream file_stream(file.path());
+        nlohmann::json file_json = nlohmann::json::parse(file_stream);
+
+        max_name_size = std::max(max_name_size, file_json["name"].get<std::string_view>().size());
+    }
+
+    std::cout << max_name_size << std::endl;
+
     for (const auto& file : std::filesystem::directory_iterator(test_case_directory)) {
         std::ifstream file_stream(file.path());
         nlohmann::json file_json = nlohmann::json::parse(file_stream);
@@ -195,7 +206,7 @@ int main() {
             }
         }
 
-        std::cout << "[TEST] " << (return_test && output_test ? "PASS" : "FAIL") << " | " << name << " | RESULT-CHECK: " << (return_test ? "PASS" : "FAIL") << ", OUTPUT-CHECK: " << (output_test ? "PASS" : "FAIL") << std::endl;
+        std::cout << "[TEST] " << (return_test && output_test ? "PASS" : "FAIL") << " | " << name << std::string(max_name_size - name.size(), ' ') << " | RESULT-CHECK: " << (return_test ? "PASS" : "FAIL") << ", OUTPUT-CHECK: " << (output_test ? "PASS" : "FAIL") << std::endl;
 
         if (!output_test) {
             std::cout << "--- Expected ---\n";
