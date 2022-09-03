@@ -46,7 +46,6 @@ namespace rebar {
             typename std::allocator_traits<std::allocator<std::pair<std::string_view, string>>>::template rebind_alloc<ska::detailv3::sherwood_v3_entry<std::pair<std::string_view, string>>>
         > m_string_table; // I don't like it any more than you do.
 
-
         ska::detailv3::sherwood_v3_table<
             std::pair<object, virtual_table>,
             object,
