@@ -251,8 +251,96 @@ namespace rebar {
                 break;
             case separator::end_statement:
                 break;
-            case separator::new_object:
+            case separator::new_object: {
+                const auto& callable_node = a_expression.get_operand(0);
+
+                size_t argument_offset = 0;
+                object* argument_table = m_environment.get_arguments_pointer();
+
+                for (auto it = a_expression.get_operands().begin() + 1; it != a_expression.get_operands().cend(); ++it) {
+                    REBAR_CC_DEBUG("Assign function argument. (%d)", argument_offset);
+
+                    perform_node_pass(a_ctx, *it, a_side);
+
+                    cc.mov(a_ctx.identifier, reinterpret_cast<size_t>(argument_table) + (argument_offset * sizeof(object)));
+                    cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier), out_type);
+                    cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier, object_data_offset), out_data);
+
+                    const auto& reference_needed = cc.newLabel();
+                    const auto& reference_unneeded = cc.newLabel();
+
+                    REBAR_CC_DEBUG("Test argument referencing.");
+
+                    // Test if object needs explicit referencing.
+                    cc.cmp(out_type, object::simple_type_end_boundary);
+                    cc.jg(reference_needed);
+                    cc.jmp(reference_unneeded);
+
+                    cc.bind(reference_needed);
+
+                    REBAR_CC_DEBUG("Call reference.");
+
+                    asmjit::InvokeNode* reference_func_invoke;
+                    cc.invoke(&reference_func_invoke, _ext_reference_object, asmjit::FuncSignatureT<void, size_t, size_t>(platform_call_convention));
+                    reference_func_invoke->setArg(0, out_type);
+                    reference_func_invoke->setArg(1, out_data);
+
+                    cc.bind(reference_unneeded);
+
+                    ++argument_offset;
+                }
+
+                REBAR_CC_DEBUG("Assign argument count. (%d)", a_expression.get_operands().size() - 1);
+
+                cc.mov(a_ctx.identifier, reinterpret_cast<size_t>(m_environment.get_arguments_size_pointer()));
+                cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier), a_expression.get_operands().size() - 1);
+
+                perform_node_pass(a_ctx, a_expression.get_operand(0), a_side);
+
+                cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset), out_data);
+
+                asmjit::InvokeNode* invoke_node;
+                cc.invoke(&invoke_node, _ext_object_new, asmjit::FuncSignatureT<void, object*, environment*>(platform_call_convention));
+                invoke_node->setArg(0, a_ctx.environment);
+                invoke_node->setArg(1, a_ctx.return_object);
+
+                argument_offset = 0;
+
+                for (auto it = a_expression.get_operands().begin() + 1; it != a_expression.get_operands().cend(); ++it) {
+                    REBAR_CC_DEBUG("Test argument dereferencing. (%d)", argument_offset);
+
+                    cc.mov(a_ctx.identifier, reinterpret_cast<size_t>(argument_table) + (argument_offset * sizeof(object)));
+                    cc.mov(out_type, asmjit::x86::qword_ptr(a_ctx.identifier));
+                    cc.mov(out_data, asmjit::x86::qword_ptr(a_ctx.identifier, object_data_offset));
+
+                    const auto& dereference_needed = cc.newLabel();
+                    const auto& dereference_unneeded = cc.newLabel();
+
+                    // Test if object needs explicit referencing.
+                    cc.cmp(out_type, object::simple_type_end_boundary);
+                    cc.jg(dereference_needed);
+                    cc.jmp(dereference_unneeded);
+
+                    cc.bind(dereference_needed);
+
+                    REBAR_CC_DEBUG("Dereference function.");
+
+                    asmjit::InvokeNode* dereference_func_invoke;
+                    cc.invoke(&dereference_func_invoke, _ext_dereference_object, asmjit::FuncSignatureT<void, size_t, size_t>(platform_call_convention));
+                    dereference_func_invoke->setArg(0, out_type);
+                    dereference_func_invoke->setArg(1, out_data);
+
+                    cc.bind(dereference_unneeded);
+
+                    ++argument_offset;
+                }
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(a_ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset));
+
                 break;
+            }
             case separator::namespace_index:
             case separator::direct:
             case separator::dot:
@@ -390,7 +478,7 @@ namespace rebar {
                 invoke_node->setArg(0, a_ctx.return_object);
                 invoke_node->setArg(1, a_ctx.environment);
 
-                argument_offset = 0;
+                argument_offset = dot_call ? 1 : 0;
 
                 for (auto it = a_expression.get_operands().begin() + 1; it != a_expression.get_operands().cend(); ++it) {
                     REBAR_CC_DEBUG("Test argument dereferencing. (%d)", argument_offset);
