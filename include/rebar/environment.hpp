@@ -33,7 +33,7 @@ namespace rebar {
         friend class string;
 
         size_t m_argument_count;
-        std::array<object, 16> m_arguments;
+        const object* m_arguments_pointer;
 
         ska::detailv3::sherwood_v3_table<
             std::pair<std::string_view, string>,
@@ -99,14 +99,6 @@ namespace rebar {
 
         [[nodiscard]] table& get_string_virtual_table() noexcept {
             return m_string_virtual_table;
-        }
-
-        [[nodiscard]] object* get_arguments_pointer() noexcept {
-            return m_arguments.data();
-        }
-
-        [[nodiscard]] size_t* get_arguments_size_pointer() noexcept {
-            return &m_argument_count;
         }
 
         virtual_table& register_native_class(const object a_identifier, virtual_table a_table = {}) {
@@ -253,25 +245,31 @@ namespace rebar {
         }
 
         [[nodiscard]] const object& arg(const size_t a_index) const noexcept {
-            return m_arguments[a_index];
+            return a_index >= m_argument_count ? null : m_arguments_pointer[a_index];
         }
 
-        void push_arg(const object a_object) {
-            m_arguments[m_argument_count] = a_object;
-            ++m_argument_count;
+        [[nodiscard]] const auto* get_args() const noexcept {
+            return m_arguments_pointer;
         }
 
-        void set_args(const span<object> a_objects) {
-            memcpy(m_arguments.data(), a_objects.data(), a_objects.size() * sizeof(object));
-            m_argument_count = a_objects.size();
+        [[nodiscard]] const object* get_arguments_pointer() noexcept {
+            return m_arguments_pointer;
         }
 
-        [[nodiscard]] auto& get_args() const noexcept {
-            return m_arguments;
+        [[nodiscard]] const object** get_arguments_pointer_ref() noexcept {
+            return &m_arguments_pointer;
         }
 
-        void clear_args() noexcept {
-            m_argument_count = 0;
+        [[nodiscard]] size_t* get_arguments_size_pointer() noexcept {
+            return &m_argument_count;
+        }
+
+        void set_argument_count(size_t a_count) noexcept {
+            m_argument_count = a_count;
+        }
+
+        void set_arguments_pointer(const object* a_pointer) noexcept {
+            m_arguments_pointer = a_pointer;
         }
 
         void set_in_stream(std::istream& a_stream) noexcept {

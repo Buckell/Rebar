@@ -254,17 +254,19 @@ namespace rebar {
             case separator::new_object: {
                 const auto& callable_node = a_expression.get_operand(0);
 
+                auto argument_memory = a_ctx.mark_argument_allocation();
+                auto argument_allocation(argument_memory);
                 size_t argument_offset = 0;
-                object* argument_table = m_environment.get_arguments_pointer();
 
                 for (auto it = a_expression.get_operands().begin() + 1; it != a_expression.get_operands().cend(); ++it) {
                     REBAR_CC_DEBUG("Assign function argument. (%d)", argument_offset);
 
                     perform_node_pass(a_ctx, *it, a_side);
 
-                    cc.mov(a_ctx.identifier, reinterpret_cast<size_t>(argument_table) + (argument_offset * sizeof(object)));
-                    cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier), out_type);
-                    cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier, object_data_offset), out_data);
+                    cc.mov(argument_allocation, out_type);
+                    argument_allocation.addOffset(object_data_offset);
+                    cc.mov(argument_allocation, out_data);
+                    argument_allocation.addOffset(object_data_offset);
 
                     const auto& reference_needed = cc.newLabel();
                     const auto& reference_unneeded = cc.newLabel();
@@ -292,10 +294,15 @@ namespace rebar {
 
                 REBAR_CC_DEBUG("Assign argument count. (%d)", a_expression.get_operands().size() - 1);
 
+                perform_node_pass(a_ctx, a_expression.get_operand(0), a_side);
+
                 cc.mov(a_ctx.identifier, reinterpret_cast<size_t>(m_environment.get_arguments_size_pointer()));
                 cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier), a_expression.get_operands().size() - 1);
 
-                perform_node_pass(a_ctx, a_expression.get_operand(0), a_side);
+                auto [env_arg_pointer, arg_alloc] = a_ctx.expression_registers(!a_side);
+                cc.mov(env_arg_pointer, reinterpret_cast<size_t>(m_environment.get_arguments_pointer_ref()));
+                cc.lea(arg_alloc, argument_memory);
+                cc.mov(asmjit::x86::qword_ptr(env_arg_pointer), arg_alloc);
 
                 cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object), out_type);
                 cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset), out_data);
@@ -307,12 +314,15 @@ namespace rebar {
 
                 argument_offset = 0;
 
+                argument_allocation = argument_memory;
+
                 for (auto it = a_expression.get_operands().begin() + 1; it != a_expression.get_operands().cend(); ++it) {
                     REBAR_CC_DEBUG("Test argument dereferencing. (%d)", argument_offset);
 
-                    cc.mov(a_ctx.identifier, reinterpret_cast<size_t>(argument_table) + (argument_offset * sizeof(object)));
-                    cc.mov(out_type, asmjit::x86::qword_ptr(a_ctx.identifier));
-                    cc.mov(out_data, asmjit::x86::qword_ptr(a_ctx.identifier, object_data_offset));
+                    cc.mov(out_type, argument_allocation);
+                    argument_allocation.addOffset(object_data_offset);
+                    cc.mov(out_data, argument_allocation);
+                    argument_allocation.addOffset(object_data_offset);
 
                     const auto& dereference_needed = cc.newLabel();
                     const auto& dereference_unneeded = cc.newLabel();
@@ -382,8 +392,9 @@ namespace rebar {
             case separator::operation_call: {
                 const auto& callable_node = a_expression.get_operand(0);
 
+                auto argument_memory = a_ctx.mark_argument_allocation();
+                auto argument_allocation(argument_memory);
                 size_t argument_offset = 0;
-                object* argument_table = m_environment.get_arguments_pointer();
 
                 bool dot_call = false;
 
@@ -395,9 +406,10 @@ namespace rebar {
 
                         perform_node_pass(a_ctx, expr.get_operand(0), a_side);
 
-                        cc.mov(a_ctx.identifier, argument_table);
-                        cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier), out_type);
-                        cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier, object_data_offset), out_data);
+                        cc.mov(argument_allocation, out_type);
+                        argument_allocation.addOffset(object_data_offset);
+                        cc.mov(argument_allocation, out_data);
+                        argument_allocation.addOffset(object_data_offset);
 
                         ++argument_offset;
                     }
@@ -408,9 +420,10 @@ namespace rebar {
 
                     perform_node_pass(a_ctx, *it, a_side);
 
-                    cc.mov(a_ctx.identifier, reinterpret_cast<size_t>(argument_table) + (argument_offset * sizeof(object)));
-                    cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier), out_type);
-                    cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier, object_data_offset), out_data);
+                    cc.mov(argument_allocation, out_type);
+                    argument_allocation.addOffset(object_data_offset);
+                    cc.mov(argument_allocation, out_data);
+                    argument_allocation.addOffset(object_data_offset);
 
                     const auto& reference_needed = cc.newLabel();
                     const auto& reference_unneeded = cc.newLabel();
@@ -436,17 +449,14 @@ namespace rebar {
                     ++argument_offset;
                 }
 
-                REBAR_CC_DEBUG("Assign argument count. (%d)", a_expression.get_operands().size() - 1);
-
-                cc.mov(a_ctx.identifier, reinterpret_cast<size_t>(m_environment.get_arguments_size_pointer()));
-                cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier), a_expression.get_operands().size() - 1);
+                REBAR_CC_DEBUG("Assign argument data. (%d)", a_expression.get_operands().size() - 1);
 
                 if (dot_call) {
                     REBAR_CC_DEBUG("Starting select operation.");
 
                     REBAR_CC_DEBUG("Move LHS data into return object.");
 
-                    cc.mov(a_ctx.identifier, argument_table);
+                    cc.lea(a_ctx.identifier, argument_memory);
                     cc.mov(out_type, asmjit::x86::qword_ptr(a_ctx.identifier));
                     cc.mov(out_data, asmjit::x86::qword_ptr(a_ctx.identifier, object_data_offset));
                     cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object), out_type);
@@ -471,6 +481,14 @@ namespace rebar {
                     perform_node_pass(a_ctx, callable_node, a_side);
                 }
 
+                cc.mov(a_ctx.identifier, reinterpret_cast<size_t>(m_environment.get_arguments_size_pointer()));
+                cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier), a_expression.get_operands().size() - 1);
+
+                auto [env_arg_pointer, arg_alloc] = a_ctx.expression_registers(!a_side);
+                cc.mov(env_arg_pointer, reinterpret_cast<size_t>(m_environment.get_arguments_pointer_ref()));
+                cc.lea(arg_alloc, argument_memory);
+                cc.mov(asmjit::x86::qword_ptr(env_arg_pointer), arg_alloc);
+
                 // TODO: Proper call.
                 asmjit::InvokeNode* invoke_node;
                 cc.invoke(&invoke_node, out_data, asmjit::FuncSignatureT<void, object*, environment*>(platform_call_convention));
@@ -480,12 +498,19 @@ namespace rebar {
 
                 argument_offset = dot_call ? 1 : 0;
 
+                argument_allocation = argument_memory;
+
+                if (dot_call) {
+                    argument_allocation.addOffset(sizeof(object));
+                }
+
                 for (auto it = a_expression.get_operands().begin() + 1; it != a_expression.get_operands().cend(); ++it) {
                     REBAR_CC_DEBUG("Test argument dereferencing. (%d)", argument_offset);
 
-                    cc.mov(a_ctx.identifier, reinterpret_cast<size_t>(argument_table) + (argument_offset * sizeof(object)));
-                    cc.mov(out_type, asmjit::x86::qword_ptr(a_ctx.identifier));
-                    cc.mov(out_data, asmjit::x86::qword_ptr(a_ctx.identifier, object_data_offset));
+                    cc.mov(out_type, argument_allocation);
+                    argument_allocation.addOffset(object_data_offset);
+                    cc.mov(out_data, argument_allocation);
+                    argument_allocation.addOffset(object_data_offset);
 
                     const auto& dereference_needed = cc.newLabel();
                     const auto& dereference_unneeded = cc.newLabel();
@@ -511,6 +536,8 @@ namespace rebar {
 
                 cc.mov(out_type, asmjit::x86::qword_ptr(a_ctx.return_object));
                 cc.mov(out_data, asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset));
+
+                a_ctx.unmark_argument_allocation();
 
                 break;
             }

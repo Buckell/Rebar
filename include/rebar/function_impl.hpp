@@ -15,30 +15,19 @@
 namespace rebar {
     template <typename... t_objects>
     object function::call_v(t_objects&&... a_objects) {
-        std::array<object, 16> temp = m_environment.get_args();
+        std::array<object, sizeof...(a_objects)> temp{ std::forward<t_objects...>(a_objects)... };
 
-        if constexpr (sizeof...(a_objects) > 0) {
-            std::vector<object> args{{ std::forward<t_objects>(a_objects)... }};
-            m_environment.set_args(args);
-        }
+        m_environment.set_arguments_pointer(temp.data());
+        m_environment.set_argument_count(temp.size());
 
-        object res = m_environment.m_provider->call(m_data);
-
-        m_environment.set_args(temp);
-
-        return res;
+        return m_environment.m_provider->call(m_data);
     }
 
     object function::call(const span<object> a_objects) {
-        std::array<object, 16> temp = m_environment.get_args();
+        m_environment.set_arguments_pointer(a_objects.data());
+        m_environment.set_argument_count(a_objects.size());
 
-        m_environment.set_args(a_objects);
-
-        object res = m_environment.m_provider->call(m_data);
-
-        m_environment.set_args(temp);
-
-        return res;
+        return m_environment.m_provider->call(m_data);
     }
 }
 

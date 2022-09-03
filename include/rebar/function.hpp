@@ -30,7 +30,7 @@ namespace rebar {
         template <typename... t_objects>
         object call_v(t_objects&&... a_objects);
 
-        object call(const span<object> a_objects);
+        object call(span<object> a_objects);
 
         template <typename... t_objects>
         std::enable_if_t<sizeof...(t_objects) == 0 || ((std::is_convertible_v<t_objects, object>) && ...), object> operator () (t_objects&&... a_objects) {

@@ -106,6 +106,9 @@ namespace rebar {
 
             asmjit::x86::Mem temporary_store_stack;
 
+            std::vector<asmjit::x86::Mem> argument_stack;
+            size_t current_argument_ref = 0;
+
             output_registers expression_registers(output_side a_side) {
                 return a_side == output_side::righthand ? output_registers{ rhs_type, rhs_data } : output_registers{ lhs_type, lhs_data };
             }
@@ -159,6 +162,18 @@ namespace rebar {
                 invoke_node->setArg(0, out_type);
                 invoke_node->setArg(1, out_data);
                 invoke_node->setArg(2, t);
+            }
+
+            [[nodiscard]] asmjit::x86::Mem mark_argument_allocation() noexcept {
+                if (argument_stack.size() == current_argument_ref) {
+                    argument_stack.push_back(assembler.newStack(default_argument_allocation * sizeof(object), alignof(object)));
+                }
+
+                return argument_stack[current_argument_ref++];
+            }
+
+            void unmark_argument_allocation() noexcept {
+                --current_argument_ref;
             }
         };
 

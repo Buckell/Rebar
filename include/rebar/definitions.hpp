@@ -264,6 +264,8 @@ namespace rebar {
 #endif
 
     constexpr size_t object_data_offset = sizeof(size_t);
+
+    constexpr size_t default_argument_allocation = 16;
 }
 
 #endif //REBAR_DEFINITIONS_HPP

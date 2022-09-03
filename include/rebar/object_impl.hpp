@@ -17,18 +17,12 @@ namespace rebar {
             case type::function:
                 return get_function(a_environment).call(std::forward<t_objects>(a_objects)...);
             case type::native_object: {
-                std::array<object, 16> temp = a_environment.get_args();
+                std::array<object, sizeof...(a_objects)> temp{ std::forward<t_objects...>(a_objects)... };
 
-                if constexpr (sizeof...(a_objects) > 0) {
-                    std::vector<object> args{ { std::forward<t_objects>(a_objects)... } };
-                    a_environment.set_args(args);
-                }
+                a_environment.set_arguments_pointer(temp.data());
+                a_environment.set_argument_count(temp.size());
 
-                object result = get_native_object().overload_call(a_environment);
-
-                a_environment.set_args(temp);
-
-                return result;
+                return get_native_object().overload_call(a_environment);
             }
             default:
                 return {};
@@ -40,15 +34,10 @@ namespace rebar {
             case type::function:
                 return get_function(a_environment).call(a_objects);
             case type::native_object: {
-                std::array<object, 16> temp = a_environment.get_args();
+                a_environment.set_arguments_pointer(a_objects.data());
+                a_environment.set_argument_count(a_objects.size());
 
-                a_environment.set_args(a_objects);
-
-                object result = get_native_object().overload_call(a_environment);
-
-                a_environment.set_args(temp);
-
-                return result;
+                return get_native_object().overload_call(a_environment);
             }
             default:
                 return {};
@@ -59,18 +48,12 @@ namespace rebar {
     object object::new_object_v(environment& a_environment, t_objects&&... a_objects) {
         switch (m_type) {
             case type::native_object: {
-                std::array<object, 16> temp = a_environment.get_args();
+                std::array<object, sizeof...(a_objects)> temp{ std::forward<t_objects...>(a_objects)... };
 
-                if constexpr (sizeof...(a_objects) > 0) {
-                    std::vector<object> args{ { std::forward<t_objects>(a_objects)... } };
-                    a_environment.set_args(args);
-                }
+                a_environment.set_arguments_pointer(temp.data());
+                a_environment.set_argument_count(temp.size());
 
-                object result = get_native_object().overload_new(a_environment);
-
-                a_environment.set_args(temp);
-
-                return result;
+                return get_native_object().overload_new(a_environment);
             }
             default:
                 return {};
@@ -80,15 +63,10 @@ namespace rebar {
     object object::new_object(environment& a_environment, const span<rebar::object> a_objects) {
         switch (m_type) {
             case type::native_object: {
-                std::array<object, 16> temp = a_environment.get_args();
+                a_environment.set_arguments_pointer(a_objects.data());
+                a_environment.set_argument_count(a_objects.size());
 
-                a_environment.set_args(a_objects);
-
-                object result = get_native_object().overload_new(a_environment);
-
-                a_environment.set_args(temp);
-
-                return result;
+                return get_native_object().overload_new(a_environment);
             }
             default:
                 return {};
