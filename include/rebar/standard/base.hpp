@@ -17,7 +17,9 @@ namespace rebar::library::standard {
             auto& out = env->cout();
 
             if (env->arg_count() == 0) {
-                out << '\n';
+                out << std::endl;
+                *ret = null;
+                return;
             }
 
             out << env->arg(0);
@@ -28,7 +30,7 @@ namespace rebar::library::standard {
 
             out << std::endl;
 
-            *ret = rebar::null;
+            *ret = null;
         }
 
         static REBAR_FUNCTION(Print) {
