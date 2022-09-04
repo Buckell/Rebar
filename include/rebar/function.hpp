@@ -36,6 +36,10 @@ namespace rebar {
         std::enable_if_t<sizeof...(t_objects) == 0 || ((std::is_convertible_v<t_objects, object>) && ...), object> operator () (t_objects&&... a_objects) {
             return call_v(std::forward<t_objects>(a_objects)...);
         }
+
+        [[nodiscard]] const void* data() const noexcept {
+            return m_data;
+        }
     };
 
     namespace function_info_source {

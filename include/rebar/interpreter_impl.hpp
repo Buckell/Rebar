@@ -823,15 +823,8 @@ namespace rebar {
 
         for (size_t i = 0; i < m_arguments.size(); ++i) {
             const auto& arg = m_arguments[i];
-            const auto& identifier = arg.is_token() ? arg : *(arg.get_expression().get_operands().end() - 1);
 
-            if (identifier.is_token()) {
-                const auto& tok = identifier.get_token();
-
-                if (tok.is_identifier()) {
-                    arg_table[m_environment.str(tok.get_identifier())] = m_environment.arg(i);
-                }
-            }
+            arg_table[m_environment.str(arg.identifier)] = m_environment.arg(i);
         }
 
         return_state state{ evaluate_block(m_body) };

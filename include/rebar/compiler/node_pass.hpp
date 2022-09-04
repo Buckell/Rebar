@@ -59,8 +59,34 @@ namespace rebar {
                 break;
             case node::type::for_declaration:
                 break;
-            case node::type::function_declaration:
+            case node::type::function_declaration: {
+                const auto& decl = a_node.get_function_declaration();
+
+                function func = compile_function(a_ctx.source.puint, decl.m_parameters, decl.m_body);
+
+                std::string_view function_identifier_plaintext = decl.m_identifier.get_string_representation(a_ctx.source.puint.m_plaintext, 1);
+
+                m_environment.emplace_function_info(func, {
+                    std::string(function_identifier_plaintext),
+                    "REBAR INTERNAL;COMPILER;"s + std::to_string(m_environment.get_current_function_id_stack()),
+                    0,
+                    std::make_unique<function_info_source::rebar>(a_ctx.source.puint.m_plaintext, a_node)
+                });
+
+                std::string_view function_name = m_environment.get_function_info(func).get_name();
+
+                REBAR_CC_DEBUG("Performing function declaration. (%s)", function_name);
+
+                perform_assignable_expression_pass(a_ctx, decl.m_identifier);
+
+                cc.mov(out_type, type::function);
+                cc.movabs(out_data, func.data());
+
+                cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier), out_type);
+                cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier, object_data_offset), out_data);
+
                 break;
+            }
             case node::type::while_declaration:
                 break;
             case node::type::do_declaration:

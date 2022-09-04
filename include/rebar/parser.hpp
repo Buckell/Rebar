@@ -114,6 +114,58 @@ namespace rebar {
 
         struct group : public expression, public origin_locked {};
 
+        struct parameter {
+            std::string_view identifier;
+            std::unique_ptr<node> default_value;
+
+            parameter(std::string_view a_identifier, const node& a_node) : identifier(a_identifier), default_value(std::make_unique<node>(a_node)) {}
+            explicit parameter(std::string_view a_identifier) : identifier(a_identifier) {}
+
+            parameter(const parameter& a_decl) noexcept : identifier(a_decl.identifier), default_value(a_decl.default_value ? std::make_unique<node>(*a_decl.default_value) : std::unique_ptr<node>()) {}
+
+            parameter(parameter&& a_decl) noexcept = default;
+        };
+
+        using parameter_list = std::vector<parameter>;
+
+        static parameter_list parse_parameter_list(const argument_list& a_list) {
+            parameter_list list;
+
+            for (const auto& arg : a_list) {
+                if (arg.is_token()) {
+                    const auto& tok = arg.get_token();
+
+                    if (tok.is_identifier()) {
+                        list.emplace_back(tok.get_identifier());
+                    }
+                } else if (arg.is_expression()) {
+                    const auto& expression = arg.get_expression();
+
+                    if (expression.get_operation() == separator::assignment) {
+                        if (expression.get_operand(0).is_token()) {
+                            const auto& identifier_token = expression.get_operand(0).get_token();
+
+                            if (identifier_token.is_identifier()) {
+                                list.emplace_back(identifier_token.get_identifier(), expression.get_operand(1));
+                            }
+                        }
+                    } else if (expression.get_operation() == separator::space) {
+                        const auto& identifier_node = expression.get_operand(0);
+
+                        if (identifier_node.is_token()) {
+                            const auto& tok = identifier_node.get_token();
+
+                            if (tok.is_identifier()) {
+                                list.emplace_back(tok.get_identifier());
+                            }
+                        }
+                    }
+                }
+            }
+
+            return list;
+        }
+
         struct if_declaration {
             group m_conditional;
             block m_body;
@@ -145,10 +197,10 @@ namespace rebar {
         struct function_declaration {
             group m_identifier;
             function_tags m_tags;
-            argument_list m_parameters;
+            parameter_list m_parameters;
             block m_body;
 
-            function_declaration(group a_identifier, const function_tags a_tags, argument_list a_parameters, block a_body) noexcept :
+            function_declaration(group a_identifier, const function_tags a_tags, parameter_list a_parameters, block a_body) noexcept :
                     m_identifier(std::move(a_identifier)), m_tags(a_tags), m_parameters(std::move(a_parameters)), m_body(std::move(a_body)) {}
 
             function_declaration(const function_declaration& a_decl) = default;
@@ -545,8 +597,16 @@ namespace rebar {
                     string += "; PARAMETER LIST { ";
 
                     for (const auto &n : declaration.m_parameters) {
-                        string += "PARAMETER GROUP { ";
-                        string += n.to_string();
+                        string += "PARAMETER { ";
+                        string += n.identifier;
+                        string += ' ';
+
+                        if (n.default_value) {
+                            string += "DEFAULT { ";
+                            string += n.default_value->to_string();
+                            string += "}; ";
+                        }
+
                         string += "}; ";
                     }
 
@@ -637,9 +697,17 @@ namespace rebar {
                         string += function_tags_to_string(func.m_tags);
                         string += "; PARAMETER LIST { ";
 
-                        for (const auto &nn : func.m_parameters) {
-                            string += "PARAMETER GROUP { ";
-                            string += nn.to_string();
+                        for (const auto &n : func.m_parameters) {
+                            string += "PARAMETER { ";
+                            string += n.identifier;
+                            string += ' ';
+
+                            if (n.default_value) {
+                                string += "DEFAULT { ";
+                                string += n.default_value->to_string();
+                                string += "}; ";
+                            }
+
                             string += "}; ";
                         }
 
@@ -732,7 +800,15 @@ namespace rebar {
         span<token>::iterator last_token = a_tokens.begin();
 
         for (size_t i = 0; i < a_tokens.size(); ++i) {
-            span<token>::iterator next_token = find_next(a_tokens.subspan(i), separator::list, separator::group_open, separator::group_close);
+            span<token>::iterator next_token = find_next(a_tokens.subspan(i), separator::list, [] (const auto& tok) noexcept -> find_next_exclude {
+                if (tok == separator::scope_open || tok == separator::group_open) {
+                    return find_next_exclude::open;
+                } else if (tok == separator::scope_close || tok == separator::group_close) {
+                    return find_next_exclude::close;
+                } else {
+                    return find_next_exclude::none;
+                }
+            });
 
             if (next_token == a_tokens.end()) {
                 groups.emplace_back(
@@ -1718,7 +1794,7 @@ namespace rebar {
                         node::function_declaration(
                             func_identifier,
                             tags,
-                            func_args,
+                            node::parse_parameter_list(func_args),
                             parse_block(a_plaintext, body_tokens, body_source_positions)
                         )
                     );
@@ -1742,7 +1818,7 @@ namespace rebar {
                         node::function_declaration(
                             func_identifier,
                             tags,
-                            func_args,
+                            node::parse_parameter_list(func_args),
                             parse_block(a_plaintext, body_tokens, body_source_positions)
                         )
                     );

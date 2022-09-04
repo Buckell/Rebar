@@ -44,11 +44,11 @@ namespace rebar {
         };
 
         class interpreted_function_source : public function_source {
-            node::argument_list m_arguments;
+            node::parameter_list m_arguments;
             const node::block& m_body;
 
         public:
-            interpreted_function_source(environment& a_environment, node::argument_list a_arguments, const node::block& a_body) noexcept :
+            interpreted_function_source(environment& a_environment, node::parameter_list a_arguments, const node::block& a_body) noexcept :
                     function_source(a_environment),
                     m_arguments(std::move(a_arguments)),
                     m_body(a_body) {}
@@ -60,7 +60,7 @@ namespace rebar {
         explicit interpreter(environment& a_environment) noexcept : m_environment(a_environment) {}
 
         [[nodiscard]] function compile(parse_unit& a_unit) override {
-            m_function_sources.emplace_back(dynamic_cast<function_source*>(new interpreted_function_source(m_environment, node::argument_list(), a_unit.m_block)));
+            m_function_sources.emplace_back(dynamic_cast<function_source*>(new interpreted_function_source(m_environment, node::parameter_list(), a_unit.m_block)));
             return { m_environment, m_function_sources.back().get() };
         }
 

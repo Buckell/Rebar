@@ -20,10 +20,12 @@ namespace rebar {
 
     struct compiler_function_source {
         environment& env;
+        parse_unit& puint;
         asmjit::CodeHolder code;
         std::vector<string> string_dependencies;
+        node::parameter_list parameters;
 
-        explicit compiler_function_source(environment& a_env, asmjit::JitRuntime& a_rt, asmjit::Logger& a_logger) : env(a_env) {
+        explicit compiler_function_source(environment& a_env, parse_unit& a_puint, const node::parameter_list& a_parameters, asmjit::JitRuntime& a_rt, asmjit::Logger& a_logger) : env(a_env), puint(a_puint), parameters(a_parameters) {
             code.init(a_rt.environment());
             code.setLogger(&a_logger);
         }
@@ -106,6 +108,8 @@ namespace rebar {
 
             asmjit::x86::Mem temporary_store_stack;
 
+            asmjit::x86::Mem function_argument_stack;
+
             std::vector<asmjit::x86::Mem> argument_stack;
             size_t current_argument_ref = 0;
 
@@ -178,7 +182,7 @@ namespace rebar {
         };
 
     private:
-        function compile_function(const node::argument_list& a_parameters, const node::block& a_block);
+        function compile_function(parse_unit& a_unit, const node::parameter_list& a_parameters, const node::block& a_block);
 
         void load_token(function_context& a_ctx, const token& a_token, output_side a_side);
         void load_identifier(function_context& a_ctx, std::string_view a_identifier, output_side a_side);

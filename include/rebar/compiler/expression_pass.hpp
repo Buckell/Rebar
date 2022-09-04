@@ -296,7 +296,7 @@ namespace rebar {
 
                 perform_node_pass(a_ctx, a_expression.get_operand(0), a_side);
 
-                cc.mov(a_ctx.identifier, reinterpret_cast<size_t>(m_environment.get_arguments_size_pointer()));
+                cc.movabs(a_ctx.identifier, reinterpret_cast<size_t>(m_environment.get_arguments_size_pointer()));
                 cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier), a_expression.get_operands().size() - 1);
 
                 auto [env_arg_pointer, arg_alloc] = a_ctx.expression_registers(!a_side);
@@ -481,7 +481,7 @@ namespace rebar {
 
                 REBAR_CC_DEBUG("Assign argument data. (%d)", a_expression.get_operands().size() - 1);
 
-                cc.mov(a_ctx.identifier, reinterpret_cast<size_t>(m_environment.get_arguments_size_pointer()));
+                cc.movabs(a_ctx.identifier, reinterpret_cast<size_t>(m_environment.get_arguments_size_pointer()));
                 cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier), a_expression.get_operands().size() - 1 + dot_call);
 
                 auto [env_arg_pointer, arg_alloc] = a_ctx.expression_registers(!a_side);

@@ -11,11 +11,11 @@
 
 namespace rebar {
     function compiler::compile(parse_unit& a_unit) {
-        return compile_function(node::argument_list(), a_unit.m_block);
+        return compile_function(a_unit, node::parameter_list(), a_unit.m_block);
     }
 
-    function compiler::compile_function(const node::argument_list& a_parameters, const node::block& a_block) {
-        std::unique_ptr<compiler_function_source> function_source{ std::make_unique<compiler_function_source>(m_environment, m_runtime, m_logger) };
+    function compiler::compile_function(parse_unit& a_unit, const node::parameter_list& a_parameters, const node::block& a_block) {
+        std::unique_ptr<compiler_function_source> function_source{ std::make_unique<compiler_function_source>(m_environment, a_unit, a_parameters, m_runtime, m_logger) };
 
         asmjit::x86::Compiler cc(&function_source->code);
         cc.addDiagnosticOptions(asmjit::DiagnosticOptions::kRADebugAll);
@@ -47,6 +47,89 @@ namespace rebar {
 
         //ctx.temporary_store_stack = ctx.stack;
         ctx.temporary_store_stack = cc.newStack(temps_allocation_size, alignof(object));
+
+        if (a_parameters.size() > 0) {
+            ctx.function_argument_stack = cc.newStack(a_parameters.size() * sizeof(object), alignof(object));
+
+            auto transfer = cc.newXmm();
+
+            const auto& label_short_copy = cc.newLabel();
+            const auto& label_short_copy_loop = cc.newLabel();
+            const auto& label_short_copy_zero_loop = cc.newLabel();
+            const auto& label_full_copy_loop = cc.newLabel();
+            const auto& label_end = cc.newLabel();
+
+            // Load argument pointer into identifier.
+            cc.mov(ctx.identifier, asmjit::x86::qword_ptr(reinterpret_cast<size_t>(m_environment.get_arguments_pointer_ref())));
+
+            // Load argument count into lhs_type.
+            cc.mov(ctx.lhs_type, asmjit::x86::qword_ptr(reinterpret_cast<size_t>(m_environment.get_arguments_size_pointer())));
+
+            // Check if the number of passed arguments is lower than the number of parameters.
+            cc.cmp(ctx.lhs_type, a_parameters.size());
+            cc.jl(label_short_copy);
+
+            // Full Copy
+            // Only copy number of parameters.
+            cc.xor_(ctx.lhs_type, ctx.lhs_type);  // Counter
+            cc.lea(ctx.lhs_data, ctx.function_argument_stack);
+
+            cc.bind(label_full_copy_loop);
+
+            // TODO: Investigate shift not working with dqword_ptr.
+            // asmjit::x86::dqword_ptr(ctx.identifier, ctx.lhs_type, 4)
+
+            cc.movdqa(transfer, asmjit::x86::dqword_ptr(ctx.identifier));
+            cc.movdqa(asmjit::x86::dqword_ptr(ctx.lhs_data), transfer);
+
+            cc.cmp(ctx.lhs_type, a_parameters.size() - 1);
+            cc.je(label_end);
+
+            cc.inc(ctx.lhs_type);
+            cc.add(ctx.lhs_data, 16);
+            cc.add(ctx.identifier, 16);
+
+            cc.jmp(label_full_copy_loop);
+
+            // End Full Copy
+
+            cc.bind(label_short_copy);
+
+            // Short Copy
+            // Copy number of passed arguments and zero (null) remaining.
+
+            cc.xor_(ctx.rhs_type, ctx.rhs_type);  // Counter
+            cc.lea(ctx.lhs_data, ctx.function_argument_stack);
+
+            cc.bind(label_short_copy_loop);
+
+            cc.movdqa(transfer, asmjit::x86::dqword_ptr(ctx.identifier));
+            cc.movdqa(asmjit::x86::dqword_ptr(ctx.lhs_data), transfer);
+
+            cc.inc(ctx.rhs_type);
+            cc.add(ctx.lhs_data, 16);
+            cc.add(ctx.identifier, 16);
+
+            cc.cmp(ctx.rhs_type, ctx.lhs_type);
+            cc.jne(label_short_copy_loop);
+
+            cc.pxor(transfer, transfer);
+
+            cc.bind(label_short_copy_zero_loop);
+
+            cc.movdqa(asmjit::x86::dqword_ptr(ctx.lhs_data), transfer);
+
+            cc.cmp(ctx.rhs_type, a_parameters.size() - 1);
+            cc.je(label_end);
+
+            cc.inc(ctx.rhs_type);
+            cc.add(ctx.lhs_data, 16);
+            cc.add(ctx.identifier, 16);
+
+            cc.jmp(label_short_copy_zero_loop);
+
+            cc.bind(label_end);
+        }
 
         perform_block_pass(ctx, a_block);
 

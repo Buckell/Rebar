@@ -105,6 +105,22 @@ namespace rebar {
             }
         }
 
+        for (size_t i = 0; i < a_ctx.source.parameters.size(); ++i) {
+            const auto& parameter = a_ctx.source.parameters[i];
+
+            if (parameter.identifier == a_identifier) {
+                auto parameter_space(a_ctx.function_argument_stack);
+                parameter_space.addOffset(i * sizeof(object));
+
+                cc.mov(out_type, parameter_space);
+
+                parameter_space.addOffset(object_data_offset);
+                cc.mov(out_data, parameter_space);
+
+                return;
+            }
+        }
+
         // Pull global.
 
         string o = a_ctx.source.emplace_string_dependency(a_identifier);
@@ -152,6 +168,19 @@ namespace rebar {
             // MSVC Compatibility: "can't decrement vector iterator before begin"
             if (it == local_tables.cbegin()) {
                 break;
+            }
+        }
+
+        for (size_t i = 0; i < a_ctx.source.parameters.size(); ++i) {
+            const auto& parameter = a_ctx.source.parameters[i];
+
+            if (parameter.identifier == a_identifier) {
+                auto parameter_space(a_ctx.function_argument_stack);
+                parameter_space.addOffset(i * sizeof(object));
+
+                cc.lea(a_ctx.identifier, parameter_space);
+
+                return;
             }
         }
 
