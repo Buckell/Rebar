@@ -1410,7 +1410,7 @@ namespace rebar {
                     tbl
                 );
 
-                i += std::distance(end_scope_token, a_tokens.begin() + 1);
+                i += std::distance(end_scope_token, a_tokens.begin() + i);
             } else {
                 nodes.emplace_back(
                     a_tokens.subspan(i, 1),
