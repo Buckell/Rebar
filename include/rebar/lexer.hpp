@@ -367,6 +367,13 @@ namespace rebar {
                         // Check if identifier is being parsed.
                         if (identifier_mode) {
                             if (!next_token->second.interrupter) {
+                                char postceding_char = a_string[scan_index + next_token->first.size()];
+
+                                if (!is_identifier_char(postceding_char)) {
+                                    unit.add_token({ scan_index, next_token->first.size() }, next_token->second.replaced);
+                                    identifier_mode = false;
+                                }
+
                                 scan_index += next_token->first.size();
                                 continue;
                             }
