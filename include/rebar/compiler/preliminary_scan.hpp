@@ -43,36 +43,37 @@ namespace rebar {
 
                         break;
                     }
-                    case node::type::block: {
+                    case node::type::block:
                         block_pass(node.get_block(), a_current_count + current_count);
                         break;
-                    }
-                    case node::type::if_declaration: {
+                    case node::type::if_declaration:
                         block_pass(node.get_if_declaration().m_body, a_current_count + current_count);
                         break;
-                    }
-                    case node::type::else_if_declaration: {
+                    case node::type::else_if_declaration:
                         block_pass(node.get_else_if_declaration().m_body, a_current_count + current_count);
                         break;
-                    }
-                    case node::type::else_declaration: {
+                    case node::type::else_declaration:
                         block_pass(node.get_else_declaration(), a_current_count + current_count);
                         break;
-                    }
-                    case node::type::for_declaration: {
+                    case node::type::for_declaration:
                         block_pass(node.get_for_declaration().m_body, a_current_count + current_count);
                         break;
-                    }
-                    case node::type::while_declaration: {
+                    case node::type::while_declaration:
                         block_pass(node.get_while_declaration().m_body, a_current_count + current_count);
                         break;
-                    }
-                    case node::type::do_declaration: {
+                    case node::type::do_declaration:
                         block_pass(node.get_do_declaration().m_body, a_current_count + current_count);
                         break;
-                    }
-                    case node::type::switch_declaration: {
+                    case node::type::switch_declaration:
                         // TODO: Implement switch cases;
+                        break;
+                    case node::type::function_declaration: {
+                        const auto& decl = node.get_function_declaration();
+
+                        if (decl.m_tags == function_tags::basic) {
+                            ++current_count;
+                        }
+
                         break;
                     }
                     default:

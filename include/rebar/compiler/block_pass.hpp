@@ -8,7 +8,7 @@
 #include "../compiler.hpp"
 
 namespace rebar {
-    void compiler::perform_block_pass(function_context& a_ctx, const node::block& a_block) {
+    void compiler::perform_block_pass(function_context& a_ctx, const node::block& a_block, pass_flags a_flags) {
         auto& cc = a_ctx.assembler;
         a_ctx.local_variable_list.emplace_back();
 

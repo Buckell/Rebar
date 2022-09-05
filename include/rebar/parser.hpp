@@ -1746,8 +1746,8 @@ namespace rebar {
 
                 span<token>::iterator group_open_find = find_next(a_tokens.subspan(i + 1), separator::group_open);
 
-                span<token> identifier_tokens(a_tokens.begin() + i - flag_correction_offset, group_open_find);
-                span<source_position> identifier_source_positions = a_source_positions.subspan(i - flag_correction_offset, identifier_tokens.size());
+                span<token> identifier_tokens(a_tokens.begin() + i + 1, group_open_find);
+                span<source_position> identifier_source_positions = a_source_positions.subspan(i + 1, identifier_tokens.size());
 
                 span<token>::iterator group_close_find = find_next(span<token>(group_open_find + 1, a_tokens.end()), separator::group_close, separator::group_open, separator::group_close);
 

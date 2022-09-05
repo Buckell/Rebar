@@ -68,10 +68,6 @@ namespace rebar {
             m_logger.setFile(a_enable ? stdout : nullptr);
         }
 
-        struct node_detail {
-            constexpr static size_t identifier_as_string = 0x1;
-        };
-
         enum class output_side {
             lefthand,
             righthand
@@ -181,25 +177,28 @@ namespace rebar {
             }
         };
 
+        struct pass_flag {
+            constexpr static size_t none                 = 0x0;
+            constexpr static size_t identifier_as_string = 0x1;
+            constexpr static size_t local_identifier     = 0x1 << 1;
+        };
+
+        using pass_flags = size_t;
+
     private:
         function compile_function(parse_unit& a_unit, const node::parameter_list& a_parameters, const node::block& a_block);
 
-        void load_token(function_context& a_ctx, const token& a_token, output_side a_side);
-        void load_identifier(function_context& a_ctx, std::string_view a_identifier, output_side a_side);
-        void load_identifier_pointer(function_context& a_ctx, std::string_view a_identifier); // -> R10
+        void load_token(function_context& a_ctx, const token& a_token, output_side a_side, pass_flags a_flags = pass_flag::none);
+        void load_identifier(function_context& a_ctx, std::string_view a_identifier, output_side a_side, pass_flags a_flags = pass_flag::none);
+        void load_identifier_pointer(function_context& a_ctx, std::string_view a_identifier, pass_flags a_flags = pass_flag::none);
 
         void perform_preliminary_function_scan(function_context& a_ctx, const node::block& a_block);
 
-        void perform_block_pass(function_context& a_ctx, const node::block& a_block);
-        void perform_node_pass(function_context& a_ctx, const node& a_node, output_side a_side = output_side::lefthand);
-        void perform_expression_pass(function_context& a_ctx, const node::expression& a_expression, output_side a_side = output_side::lefthand);
-        void perform_assignable_node_pass(function_context& a_ctx, const node& a_node);
-        void perform_assignable_expression_pass(function_context& a_ctx, const node::expression& a_expression);
-        void perform_detail_node_pass(function_context& a_ctx, const node& a_node, size_t a_flags, output_side a_side = output_side::lefthand);
-
-        //void perform_normal_expression_pass(function_context& a_ctx, const node::expression& a_expression, output_side a_pos = output_side::righthand);
-        //void perform_assignable_expression_pass(function_context& a_ctx, const node::expression& a_expression);
-        //void perform_assignable_node_pass(function_context& a_ctx, const node& a_node);
+        void perform_block_pass(function_context& a_ctx, const node::block& a_block, pass_flags a_flags = pass_flag::none);
+        void perform_node_pass(function_context& a_ctx, const node& a_node, output_side a_side = output_side::lefthand, pass_flags a_flags = pass_flag::none);
+        void perform_expression_pass(function_context& a_ctx, const node::expression& a_expression, output_side a_side = output_side::lefthand, pass_flags a_flags = pass_flag::none);
+        void perform_assignable_node_pass(function_context& a_ctx, const node& a_node, pass_flags a_flags = pass_flag::none);
+        void perform_assignable_expression_pass(function_context& a_ctx, const node::expression& a_expression, pass_flags a_flags = pass_flag::none);
     };
 
     static compiler::output_side operator ! (compiler::output_side a_pos) noexcept {

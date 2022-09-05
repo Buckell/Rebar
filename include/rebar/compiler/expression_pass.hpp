@@ -13,7 +13,7 @@
 #include "../environment.hpp"
 
 namespace rebar {
-    void compiler::perform_expression_pass(function_context& a_ctx, const node::expression& a_expression, output_side a_side) {
+    void compiler::perform_expression_pass(function_context& a_ctx, const node::expression& a_expression, output_side a_side, pass_flags a_flags) {
         auto [out_type, out_data] = a_ctx.expression_registers(a_side);
         auto& cc = a_ctx.assembler;
 
@@ -365,7 +365,7 @@ namespace rebar {
                     cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object), out_type);
                     cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset), out_data);
 
-                    perform_detail_node_pass(a_ctx, a_expression.get_operand(1), node_detail::identifier_as_string, a_side);
+                    perform_node_pass(a_ctx, a_expression.get_operand(1), a_side, pass_flag::identifier_as_string);
 
                     REBAR_CC_DEBUG("Call select function.");
 
@@ -460,7 +460,7 @@ namespace rebar {
                     cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object), out_type);
                     cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset), out_data);
 
-                    perform_detail_node_pass(a_ctx, a_expression.get_operand(0).get_expression().get_operand(1), node_detail::identifier_as_string, a_side);
+                    perform_node_pass(a_ctx, a_expression.get_operand(0).get_expression().get_operand(1), a_side, pass_flag::identifier_as_string);
 
                     REBAR_CC_DEBUG("Call select function.");
 
@@ -546,7 +546,7 @@ namespace rebar {
         }
     }
 
-    void compiler::perform_assignable_expression_pass(function_context& a_ctx, const node::expression& a_expression) {
+    void compiler::perform_assignable_expression_pass(function_context& a_ctx, const node::expression& a_expression, pass_flags a_flags) {
         auto& cc = a_ctx.assembler;
 
         switch (a_expression.get_operation()) {
@@ -570,6 +570,10 @@ namespace rebar {
                             }
                         }
                     }
+                }
+
+                if (a_flags & pass_flag::local_identifier) {
+                    flag_local = true;
                 }
 
                 const auto assignee_op = *(a_expression.get_operands().end() - 1);
@@ -657,7 +661,7 @@ namespace rebar {
                 cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object), out_type);
                 cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset), out_data);
 
-                perform_detail_node_pass(a_ctx, a_expression.get_operand(1), node_detail::identifier_as_string, output_side::lefthand);
+                perform_node_pass(a_ctx, a_expression.get_operand(1), output_side::lefthand, pass_flag::identifier_as_string);
 
                 REBAR_CC_DEBUG("Call index function.");
 

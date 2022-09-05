@@ -10,13 +10,25 @@
 #include "../compiler.hpp"
 
 namespace rebar {
-    void compiler::perform_node_pass(function_context& a_ctx, const node& a_node, output_side a_side) {
+    void compiler::perform_node_pass(function_context& a_ctx, const node& a_node, output_side a_side, pass_flags a_flags) {
         auto [out_type, out_data] = a_ctx.expression_registers(a_side);
         auto& cc = a_ctx.assembler;
 
         switch (a_node.m_type) {
             case node::type::token:
-                load_token(a_ctx, a_node.get_token(), a_side);
+                if (a_flags & pass_flag::identifier_as_string) {
+                    if (a_node.is_token()) {
+                        const token &tok = a_node.get_token();
+
+                        if (tok.is_identifier()) {
+                            cc.mov(out_type, type::string);
+                            cc.mov(out_data, a_ctx.source.emplace_string_dependency(tok.get_identifier()).data());
+                        }
+                    }
+                } else {
+                    load_token(a_ctx, a_node.get_token(), a_side);
+                }
+
                 break;
             case node::type::expression:
             case node::type::group:
@@ -64,7 +76,7 @@ namespace rebar {
 
                 function func = compile_function(a_ctx.source.puint, decl.m_parameters, decl.m_body);
 
-                std::string_view function_identifier_plaintext = decl.m_identifier.get_string_representation(a_ctx.source.puint.m_plaintext, 1);
+                std::string_view function_identifier_plaintext = decl.m_identifier.get_string_representation(a_ctx.source.puint.m_plaintext);
 
                 m_environment.emplace_function_info(func, {
                     std::string(function_identifier_plaintext),
@@ -77,7 +89,7 @@ namespace rebar {
 
                 REBAR_CC_DEBUG("Performing function declaration. (%s)", function_name);
 
-                perform_assignable_expression_pass(a_ctx, decl.m_identifier);
+                perform_assignable_expression_pass(a_ctx, decl.m_identifier, (decl.m_tags == function_tags::basic) ? pass_flag::local_identifier : pass_flag::none);
 
                 cc.mov(out_type, type::function);
                 cc.movabs(out_data, func.data());
@@ -136,7 +148,7 @@ namespace rebar {
 
                     a_ctx.push_identifier();
 
-                    perform_detail_node_pass(a_ctx, entry.first, node_detail::identifier_as_string, output_side::lefthand);
+                    perform_node_pass(a_ctx, entry.first, output_side::lefthand, pass_flag::identifier_as_string);
 
                     a_ctx.push_side(output_side::lefthand);
 
@@ -176,7 +188,7 @@ namespace rebar {
         }
     }
 
-    void compiler::perform_assignable_node_pass(function_context& a_ctx, const node& a_node) {
+    void compiler::perform_assignable_node_pass(function_context& a_ctx, const node& a_node, pass_flags a_flags) {
         if (a_node.is_token()) {
             const token& tok = a_node.get_token();
 
@@ -187,25 +199,6 @@ namespace rebar {
             const auto& expression = a_node.get_expression();
             perform_assignable_expression_pass(a_ctx, expression);
         }
-    }
-
-    void compiler::perform_detail_node_pass(function_context& a_ctx, const node& a_node, size_t a_flags, output_side a_side) {
-        auto [out_type, out_data] = a_ctx.expression_registers(a_side);
-        auto& cc = a_ctx.assembler;
-
-        if (a_flags & node_detail::identifier_as_string) {
-            if (a_node.is_token()) {
-                const token &tok = a_node.get_token();
-
-                if (tok.is_identifier()) {
-                    cc.mov(out_type, type::string);
-                    cc.mov(out_data, a_ctx.source.emplace_string_dependency(tok.get_identifier()).data());
-                    return;
-                }
-            }
-        }
-
-        return perform_node_pass(a_ctx, a_node, a_side);
     }
 }
 

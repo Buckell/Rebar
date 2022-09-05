@@ -56,11 +56,13 @@ namespace rebar {
             const auto& label_short_copy = cc.newLabel();
             const auto& label_short_copy_loop = cc.newLabel();
             const auto& label_short_copy_zero_loop = cc.newLabel();
+            const auto& label_short_copy_zero = cc.newLabel();
             const auto& label_full_copy_loop = cc.newLabel();
             const auto& label_end = cc.newLabel();
 
             // Load argument pointer into identifier.
             cc.mov(ctx.identifier, asmjit::x86::qword_ptr(reinterpret_cast<size_t>(m_environment.get_arguments_pointer_ref())));
+            cc.lea(ctx.lhs_data, ctx.function_argument_stack);
 
             // Load argument count into lhs_type.
             cc.mov(ctx.lhs_type, asmjit::x86::qword_ptr(reinterpret_cast<size_t>(m_environment.get_arguments_size_pointer())));
@@ -72,7 +74,6 @@ namespace rebar {
             // Full Copy
             // Only copy number of parameters.
             cc.xor_(ctx.lhs_type, ctx.lhs_type);  // Counter
-            cc.lea(ctx.lhs_data, ctx.function_argument_stack);
 
             cc.bind(label_full_copy_loop);
 
@@ -99,7 +100,9 @@ namespace rebar {
             // Copy number of passed arguments and zero (null) remaining.
 
             cc.xor_(ctx.rhs_type, ctx.rhs_type);  // Counter
-            cc.lea(ctx.lhs_data, ctx.function_argument_stack);
+
+            cc.cmp(ctx.lhs_type, 0);
+            cc.je(label_short_copy_zero);
 
             cc.bind(label_short_copy_loop);
 
@@ -112,6 +115,8 @@ namespace rebar {
 
             cc.cmp(ctx.rhs_type, ctx.lhs_type);
             cc.jne(label_short_copy_loop);
+
+            cc.bind(label_short_copy_zero);
 
             cc.pxor(transfer, transfer);
 
@@ -129,6 +134,31 @@ namespace rebar {
             cc.jmp(label_short_copy_zero_loop);
 
             cc.bind(label_end);
+
+            for (size_t i = 0; i < a_parameters.size(); ++i) {
+                const auto& parameter = a_parameters[i];
+
+                if (parameter.default_value) {
+                    auto parameter_space(ctx.function_argument_stack);
+                    parameter_space.addOffset(i * sizeof(object));
+
+                    const auto& label_default_parameter_end = cc.newLabel();
+
+                    cc.mov(ctx.lhs_type, parameter_space);
+
+                    cc.cmp(ctx.lhs_type, type::null);
+                    cc.jne(label_default_parameter_end);
+
+                    perform_node_pass(ctx, *parameter.default_value, output_side::lefthand);
+
+                    cc.mov(parameter_space, ctx.lhs_type);
+
+                    parameter_space.addOffset(object_data_offset);
+                    cc.mov(parameter_space, ctx.lhs_data);
+
+                    cc.bind(label_default_parameter_end);
+                }
+            }
         }
 
         perform_block_pass(ctx, a_block);
