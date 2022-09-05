@@ -550,7 +550,7 @@ namespace rebar {
                 case separator::direct:
                 case separator::dot:
                     if (a_expression.count() == 2) {
-                        return resolve_assignable(a_expression.get_operand(0)).index(m_environment, detail_resolve_node(a_expression.get_operand(1), node_tags::identifier_as_string));
+                        return resolve_node(a_expression.get_operand(0)).select(m_environment, detail_resolve_node(a_expression.get_operand(1), node_tags::identifier_as_string));
                     }
                     //case separator::list:
                 case separator::length:
@@ -767,7 +767,7 @@ namespace rebar {
                         function_info& self_function_info = m_environment.get_function_info(self_function);
                         auto& source = dynamic_cast<function_info_source::rebar&>(self_function_info.get_source());
 
-                        std::string_view function_identifier_plaintext = decl.m_identifier.get_string_representation(source.m_plaintext_source, 1);
+                        std::string_view function_identifier_plaintext = decl.m_identifier.get_string_representation(source.m_plaintext_source);
 
                         m_environment.emplace_function_info(func, {
                             std::string(function_identifier_plaintext), // TODO: Generate "useful" name for functions.
@@ -824,7 +824,13 @@ namespace rebar {
         for (size_t i = 0; i < m_arguments.size(); ++i) {
             const auto& arg = m_arguments[i];
 
-            arg_table[m_environment.str(arg.identifier)] = m_environment.arg(i);
+            const auto& passed = m_environment.arg(i);
+
+            if (!passed && arg.default_value) {
+                arg_table[m_environment.str(arg.identifier)] = resolve_node(*arg.default_value);
+            } else {
+                arg_table[m_environment.str(arg.identifier)] = passed;
+            }
         }
 
         return_state state{ evaluate_block(m_body) };
