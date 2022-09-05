@@ -138,7 +138,7 @@ namespace rebar {
                     if (tok.is_identifier()) {
                         list.emplace_back(tok.get_identifier());
                     }
-                } else if (arg.is_expression()) {
+                } else if (arg.is_expression() || arg.is_group()) {
                     const auto& expression = arg.get_expression();
 
                     if (expression.get_operation() == separator::assignment) {
@@ -1749,7 +1749,7 @@ namespace rebar {
                 span<token> identifier_tokens(a_tokens.begin() + i - flag_correction_offset, group_open_find);
                 span<source_position> identifier_source_positions = a_source_positions.subspan(i - flag_correction_offset, identifier_tokens.size());
 
-                span<token>::iterator group_close_find = find_next(span<token>(group_open_find + 1, a_tokens.end()), separator::group_close, separator::group_open, separator::group_open);
+                span<token>::iterator group_close_find = find_next(span<token>(group_open_find + 1, a_tokens.end()), separator::group_close, separator::group_open, separator::group_close);
 
                 span<token> argument_tokens(group_open_find + 1, group_close_find);
                 span<source_position> argument_source_positions(identifier_source_positions.end() + 1, identifier_source_positions.end() + 1 + argument_tokens.size());
