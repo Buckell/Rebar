@@ -1,0 +1,16 @@
+{
+    "name": "Local Function Definition",
+    "code": [
+        "local function LocalTestFunction(a, b = \"Hello, world!\", c = 4) {",
+        "   PrintLn(a, b, c);",
+        "}",
+        "LocalTestFunction();",
+        "LocalTestFunction(10, 20);",
+        "LocalTestFunction(10, 20, \"Goodbye!\");"
+    ],
+    "output": [
+        "null Hello, world! 4",
+        "10 20 4",
+        "10 20 Goodbye!"
+    ]
+}
