@@ -1,5 +1,5 @@
 {
-    "name": "Batch Operator Test",
+    "name": "Batch Operator",
     "code": [
         "local table = {};",
         "local a = 1;",
