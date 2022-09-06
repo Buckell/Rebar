@@ -66,6 +66,11 @@ namespace rebar {
     table* _ext_allocate_table() {
         return new table;
     }
+
+    void _ext_allocate_array(object* ret, size_t a_size) {
+        *ret = array(a_size);
+        ret->get_array().vector_reference().resize(a_size);
+    }
 }
 
 #endif //REBAR_EXT_HPP

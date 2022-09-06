@@ -49,24 +49,6 @@ namespace rebar {
             return *(reinterpret_cast<size_t*>(m_root_pointer) + 1);
         }
 
-        [[nodiscard]] inline std::vector<object>& vector_reference() noexcept {
-            switch (get_type()) {
-                case type::managed:
-                    return *(reinterpret_cast<std::vector<object>*>(reinterpret_cast<size_t*>(m_root_pointer) + 2));
-                case type::view:
-                    return (reinterpret_cast<array*>(m_root_pointer) + 2)->vector_reference();
-            }
-        }
-
-        [[nodiscard]] const std::vector<object>& vector_reference() const noexcept {
-            switch (get_type()) {
-                case type::managed:
-                    return *(reinterpret_cast<std::vector<object>*>(reinterpret_cast<size_t*>(m_root_pointer) + 2));
-                case type::view:
-                    return (reinterpret_cast<array*>(m_root_pointer) + 2)->vector_reference();
-            }
-        }
-
         [[nodiscard]] inline array& view_array() noexcept {
             return *(reinterpret_cast<array*>(m_root_pointer) + 2);
         }
@@ -127,6 +109,24 @@ namespace rebar {
         }
 
         void initialize(type a_type, size_t a_capacity = 4) noexcept;
+
+        [[nodiscard]] inline std::vector<object>& vector_reference() noexcept {
+            switch (get_type()) {
+                case type::managed:
+                    return *(reinterpret_cast<std::vector<object>*>(reinterpret_cast<size_t*>(m_root_pointer) + 2));
+                case type::view:
+                    return (reinterpret_cast<array*>(m_root_pointer) + 2)->vector_reference();
+            }
+        }
+
+        [[nodiscard]] const std::vector<object>& vector_reference() const noexcept {
+            switch (get_type()) {
+                case type::managed:
+                    return *(reinterpret_cast<std::vector<object>*>(reinterpret_cast<size_t*>(m_root_pointer) + 2));
+                case type::view:
+                    return (reinterpret_cast<array*>(m_root_pointer) + 2)->vector_reference();
+            }
+        }
 
         [[nodiscard]] inline type get_type() const noexcept {
             return *reinterpret_cast<type*>(m_root_pointer);

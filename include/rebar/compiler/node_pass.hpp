@@ -37,12 +37,6 @@ namespace rebar {
             case node::type::block:
                 perform_block_pass(a_ctx, a_node.get_block());
                 break;
-            case node::type::selector:
-                break;
-            case node::type::ranged_selector:
-                break;
-            case node::type::argument_list:
-                break;
             case node::type::if_declaration: {
                  const auto& decl = a_node.get_if_declaration();
                  const auto& conditional = decl.m_conditional;
@@ -181,8 +175,52 @@ namespace rebar {
                 break;
             case node::type::continue_statement:
                 break;
-            case node::type::immediate_array:
+            case node::type::immediate_array: {
+                const auto& arr = a_node.get_immediate_array();
+
+                REBAR_CC_DEBUG("Begin intermediate array.");
+
+                cc.mov(a_ctx.identifier, arr.size());
+
+                asmjit::InvokeNode* array_invoke;
+                cc.invoke(&array_invoke, _ext_allocate_array, asmjit::FuncSignatureT<void, object*, size_t>(platform_call_convention));
+                array_invoke->setArg(0, a_ctx.return_object);
+                array_invoke->setArg(1, a_ctx.identifier);
+
+                cc.mov(a_ctx.identifier, asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset));
+
+                for (size_t i = 0; i < arr.size(); ++i) {
+                    REBAR_CC_DEBUG("Immediate array entry.");
+
+                    a_ctx.push_identifier();
+
+                    perform_node_pass(a_ctx, arr[i], output_side::righthand);
+
+                    a_ctx.pop_identifier();
+
+                    cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object), type::array);
+                    cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset), a_ctx.identifier);
+
+                    cc.mov(a_ctx.lhs_type, type::integer);
+                    cc.mov(a_ctx.lhs_data, i);
+
+                    asmjit::InvokeNode* index_invoke;
+                    cc.invoke(&index_invoke, _ext_object_index, asmjit::FuncSignatureT<object*, environment*, object*, type, size_t>(platform_call_convention));
+                    index_invoke->setArg(0, a_ctx.environment);
+                    index_invoke->setArg(1, a_ctx.return_object);
+                    index_invoke->setArg(2, a_ctx.lhs_type);
+                    index_invoke->setArg(3, a_ctx.lhs_data);
+                    index_invoke->setRet(0, a_ctx.lhs_data);
+
+                    cc.mov(asmjit::x86::qword_ptr(a_ctx.lhs_data), a_ctx.rhs_type);
+                    cc.mov(asmjit::x86::qword_ptr(a_ctx.lhs_data, object_data_offset), a_ctx.rhs_data);
+                }
+
+                cc.mov(out_type, type::array);
+                cc.mov(out_data, a_ctx.identifier);
+
                 break;
+            }
             default:
                 break;
         }
