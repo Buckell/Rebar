@@ -67,10 +67,10 @@ namespace rebar {
         typename t_container::iterator end_it = a_container.end();
 
         // A "search" function has been specified.
-        constexpr bool using_search_function = std::is_convertible_v<t_search, const std::function<bool (const typename t_container::value_type&)>>;
+        constexpr bool using_search_function = std::is_convertible_v<t_search, std::function<bool (const typename t_container::value_type&)>>;
 
         // An "open/close exclude" function has been specified.
-        constexpr bool using_exclude_function = std::is_convertible_v<t_search, const std::function<find_next_exclude (const typename t_container::value_type&)>>;
+        constexpr bool using_exclude_function = !std::is_same_v<t_exclude_open, std::nullptr_t> && std::is_convertible_v<t_exclude_open, std::function<find_next_exclude (const typename t_container::value_type&)>>;
 
         // Standard "open/close exclude" objects have been specified.
         constexpr bool using_exclude = !using_exclude_function && !std::is_same_v<t_exclude_open, std::nullptr_t> && !std::is_same_v<t_exclude_close, std::nullptr_t>;
