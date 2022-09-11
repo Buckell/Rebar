@@ -73,7 +73,7 @@ namespace rebar {
         }
     }
 
-    std::string object::to_string() noexcept {
+    std::string object::to_string() const noexcept {
         using namespace std::string_literals;
 
         switch (m_type) {
@@ -100,7 +100,7 @@ namespace rebar {
         }
     }
 
-    object object::add(environment& a_environment, object lhs, object rhs) {
+    object object::add(environment& a_environment, const object& lhs, const object& rhs) {
         switch (lhs.m_type) {
             case type::null:
                 if (rhs.is_string()) {

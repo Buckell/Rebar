@@ -7,10 +7,15 @@
 
 #include "../compiler.hpp"
 
+#include "macro.hpp"
+
 namespace rebar {
-    void compiler::perform_block_pass(function_context& a_ctx, const node::block& a_block, pass_flags a_flags) {
+    void compiler::perform_block_pass(function_context& a_ctx, const node::block& a_block) {
+        function_context::pass_control pass(a_ctx);
+
         auto& cc = a_ctx.assembler;
         a_ctx.local_variable_list.emplace_back();
+        a_ctx.constant_tables.emplace_back();
 
         a_ctx.block_local_offsets.emplace_back(0);
 
@@ -25,9 +30,7 @@ namespace rebar {
 
             a_ctx.local_stack_position -= block_local_stack_offset;
 
-            if constexpr (debug_mode) {
-                cc.commentf("Perform garbage collection. (Offset: %d - %d Objects)", a_ctx.local_stack_position, locals_table.size());
-            }
+            REBAR_CC_DEBUG("Perform garbage collection. (Offset: %d - %d Objects)", a_ctx.local_stack_position, locals_table.size());
 
             // Dereference and garbage collect locals.
             asmjit::x86::Mem locals_stack(a_ctx.locals_stack);
@@ -36,14 +39,19 @@ namespace rebar {
             cc.lea(a_ctx.identifier, locals_stack);
             cc.mov(a_ctx.lhs_type, locals_table.size());
 
-            asmjit::InvokeNode* invoke_node;
-            cc.invoke(&invoke_node, object::block_dereference, asmjit::FuncSignatureT<void, object*, size_t>(platform_call_convention));
-            invoke_node->setArg(0, a_ctx.identifier);
-            invoke_node->setArg(1, a_ctx.lhs_type);
+            REBAR_CODE_GENERATION_GUARD({
+                asmjit::InvokeNode* invoke_node;
+                cc.invoke(&invoke_node, object::block_dereference, asmjit::FuncSignatureT<void, object*, size_t>(platform_call_convention));
+                invoke_node->setArg(0, a_ctx.identifier);
+                invoke_node->setArg(1, a_ctx.lhs_type);
+            })
+
+            pass.set_flags(pass_flag::clobber_identifier | pass_flag::clobber_left);
         }
 
         a_ctx.block_local_offsets.pop_back();
         a_ctx.local_variable_list.pop_back();
+        a_ctx.constant_tables.pop_back();
     }
 }
 

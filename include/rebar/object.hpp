@@ -37,7 +37,7 @@ namespace rebar {
 
     private:
         type m_type;
-        size_t m_data;
+        mutable size_t m_data;
 
     public:
         object(const type a_type, const size_t a_data) noexcept : m_type(a_type), m_data(a_data) {
@@ -194,11 +194,11 @@ namespace rebar {
             return *reinterpret_cast<table*>(m_data);
         }
 
-        [[nodiscard]] native_object get_native_object() noexcept {
-            return native_object{ reinterpret_cast<void*>(m_data) };
+        [[nodiscard]] native_object& get_native_object() const noexcept {
+            return *reinterpret_cast<native_object*>(&m_data);
         }
 
-        [[nodiscard]] array get_array() noexcept {
+        [[nodiscard]] array& get_array() const noexcept {
             return *reinterpret_cast<array*>(&m_data);
         }
 
@@ -225,14 +225,14 @@ namespace rebar {
         [[nodiscard]] object select(environment& a_environment, const object& rhs);
         [[nodiscard]] object select(environment& a_environment, const object& rhs1, const object& rhs2);
 
-        [[nodiscard]] std::string to_string() noexcept;
+        [[nodiscard]] std::string to_string() const noexcept;
 
         bool operator == (const type rhs) const noexcept {
             return m_type == rhs;
         }
 
         // TODO: Implement addition operations for remaining types.
-        static object add(environment& a_environment, object lhs, const object rhs);
+        static object add(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement subtraction operations for remaining types.
         static object subtract(environment& a_environment, object lhs, const object rhs);

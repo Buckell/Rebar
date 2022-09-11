@@ -10,24 +10,25 @@
 #include "../compiler.hpp"
 
 namespace rebar {
-    void compiler::perform_node_pass(function_context& a_ctx, const node& a_node, output_side a_side, pass_flags a_flags) {
+    void compiler::perform_node_pass(function_context& a_ctx, const node& a_node, output_side a_side) {
+        function_context::pass_control pass(a_ctx);
+
         auto [out_type, out_data] = a_ctx.expression_registers(a_side);
         auto& cc = a_ctx.assembler;
 
         switch (a_node.m_type) {
             case node::type::token:
-                if (a_flags & pass_flag::identifier_as_string) {
-                    if (a_node.is_token()) {
-                        const token &tok = a_node.get_token();
+                if (pass.flags_set(pass_flag::identifier_as_string) && a_node.is_token()) {
+                    const token &tok = a_node.get_token();
 
-                        if (tok.is_identifier()) {
-                            cc.mov(out_type, type::string);
-                            cc.mov(out_data, a_ctx.source.emplace_string_dependency(tok.get_identifier()).data());
-                        }
+                    if (tok.is_identifier()) {
+                        cc.mov(out_type, type::string);
+                        cc.mov(out_data, a_ctx.source.emplace_string_dependency(tok.get_identifier()).data());
+                        break;
                     }
-                } else {
-                    load_token(a_ctx, a_node.get_token(), a_side);
                 }
+
+                load_token(a_ctx, a_node.get_token(), a_side);
 
                 break;
             case node::type::expression:
@@ -83,13 +84,16 @@ namespace rebar {
 
                 REBAR_CC_DEBUG("Performing function declaration. (%s)", function_name);
 
-                perform_assignable_expression_pass(a_ctx, decl.m_identifier, (decl.m_tags == function_tags::basic) ? pass_flag::local_identifier : pass_flag::none);
+                pass.target_flags((decl.m_tags == function_tags::basic) ? pass_flag::local_identifier : pass_flag::none);
+                perform_assignable_expression_pass(a_ctx, decl.m_identifier);
 
                 cc.mov(out_type, type::function);
                 cc.movabs(out_data, func.data());
 
                 cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier), out_type);
                 cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier, object_data_offset), out_data);
+
+                pass.set_flags(side_clobber_flag(a_side) | pass_flag::clobber_identifier);
 
                 break;
             }
@@ -118,13 +122,19 @@ namespace rebar {
                     cc.lea(a_ctx.identifier, locals_stack);
                     cc.mov(a_ctx.lhs_type, a_ctx.local_stack_position);
 
-                    asmjit::InvokeNode* invoke_node;
-                    cc.invoke(&invoke_node, object::block_dereference, asmjit::FuncSignatureT<void, object*, size_t>(platform_call_convention));
-                    invoke_node->setArg(0, a_ctx.identifier);
-                    invoke_node->setArg(1, a_ctx.lhs_type);
+                    pass.set_flags(pass_flag::clobber_left | pass_flag::clobber_identifier);
+
+                    REBAR_CODE_GENERATION_GUARD({
+                        asmjit::InvokeNode* invoke_node;
+                        cc.invoke(&invoke_node, object::block_dereference, asmjit::FuncSignatureT<void, object*, size_t>(platform_call_convention));
+                        invoke_node->setArg(0, a_ctx.identifier);
+                        invoke_node->setArg(1, a_ctx.lhs_type);
+                    })
                 }
 
                 cc.ret();
+
+                pass.set_flags(pass_flag::clobber_return);
 
                 break;
             }
@@ -133,16 +143,21 @@ namespace rebar {
 
                 REBAR_CC_DEBUG("Begin intermediate table.");
 
-                asmjit::InvokeNode* table_invoke;
-                cc.invoke(&table_invoke, _ext_allocate_table, asmjit::FuncSignatureT<table*>(platform_call_convention));
-                table_invoke->setRet(0, a_ctx.identifier);
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* table_invoke;
+                    cc.invoke(&table_invoke, _ext_allocate_table, asmjit::FuncSignatureT<table*>(platform_call_convention));
+                    table_invoke->setRet(0, a_ctx.identifier);
+                })
 
                 for (const auto& entry : tbl.m_entries) {
                     REBAR_CC_DEBUG("Immediate table entry.");
 
+                    // TODO: Optimize: Eliminate unnecessary push/pops.
+
                     a_ctx.push_identifier();
 
-                    perform_node_pass(a_ctx, entry.first, output_side::lefthand, pass_flag::identifier_as_string);
+                    pass.target_flags(pass_flag::identifier_as_string);
+                    perform_node_pass(a_ctx, entry.first, output_side::lefthand);
 
                     a_ctx.push_side(output_side::lefthand);
 
@@ -151,23 +166,30 @@ namespace rebar {
                     a_ctx.pop_side(output_side::lefthand);
 
                     a_ctx.pop_identifier();
+
                     cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object), type::table);
                     cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset), a_ctx.identifier);
 
-                    asmjit::InvokeNode* index_invoke;
-                    cc.invoke(&index_invoke, _ext_object_index, asmjit::FuncSignatureT<object*, environment*, object*, type, size_t>(platform_call_convention));
-                    index_invoke->setArg(0, a_ctx.environment);
-                    index_invoke->setArg(1, a_ctx.return_object);
-                    index_invoke->setArg(2, a_ctx.lhs_type);
-                    index_invoke->setArg(3, a_ctx.lhs_data);
-                    index_invoke->setRet(0, a_ctx.lhs_data);
+                    REBAR_CODE_GENERATION_GUARD({
+                        asmjit::InvokeNode* index_invoke;
+                        cc.invoke(&index_invoke, _ext_object_index, asmjit::FuncSignatureT<object*, environment*, object*, type, size_t>(platform_call_convention));
+                        index_invoke->setArg(0, a_ctx.environment);
+                        index_invoke->setArg(1, a_ctx.return_object);
+                        index_invoke->setArg(2, a_ctx.lhs_type);
+                        index_invoke->setArg(3, a_ctx.lhs_data);
+                        index_invoke->setRet(0, a_ctx.lhs_data);
+                    })
 
                     cc.mov(asmjit::x86::qword_ptr(a_ctx.lhs_data), a_ctx.rhs_type);
                     cc.mov(asmjit::x86::qword_ptr(a_ctx.lhs_data, object_data_offset), a_ctx.rhs_data);
+
+                    pass.set_flags(pass_flag::clobber_return | pass_flag::clobber_left);
                 }
 
                 cc.mov(out_type, type::table);
                 cc.mov(out_data, a_ctx.identifier);
+
+                pass.set_flags(side_clobber_flag(a_side) | pass_flag::dynamic_expression | pass_flag::clobber_identifier);
 
                 break;
             }
@@ -182,15 +204,19 @@ namespace rebar {
 
                 cc.mov(a_ctx.identifier, arr.size());
 
-                asmjit::InvokeNode* array_invoke;
-                cc.invoke(&array_invoke, _ext_allocate_array, asmjit::FuncSignatureT<void, object*, size_t>(platform_call_convention));
-                array_invoke->setArg(0, a_ctx.return_object);
-                array_invoke->setArg(1, a_ctx.identifier);
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* array_invoke;
+                    cc.invoke(&array_invoke, _ext_allocate_array, asmjit::FuncSignatureT<void, object*, size_t>(platform_call_convention));
+                    array_invoke->setArg(0, a_ctx.return_object);
+                    array_invoke->setArg(1, a_ctx.identifier);
+                })
 
                 cc.mov(a_ctx.identifier, asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset));
 
                 for (size_t i = 0; i < arr.size(); ++i) {
                     REBAR_CC_DEBUG("Immediate array entry.");
+
+                    // TODO: Optimize: Eliminate unnecessary push/pops.
 
                     a_ctx.push_identifier();
 
@@ -204,20 +230,26 @@ namespace rebar {
                     cc.mov(a_ctx.lhs_type, type::integer);
                     cc.mov(a_ctx.lhs_data, i);
 
-                    asmjit::InvokeNode* index_invoke;
-                    cc.invoke(&index_invoke, _ext_object_index, asmjit::FuncSignatureT<object*, environment*, object*, type, size_t>(platform_call_convention));
-                    index_invoke->setArg(0, a_ctx.environment);
-                    index_invoke->setArg(1, a_ctx.return_object);
-                    index_invoke->setArg(2, a_ctx.lhs_type);
-                    index_invoke->setArg(3, a_ctx.lhs_data);
-                    index_invoke->setRet(0, a_ctx.lhs_data);
+                    REBAR_CODE_GENERATION_GUARD({
+                        asmjit::InvokeNode* index_invoke;
+                        cc.invoke(&index_invoke, _ext_object_index, asmjit::FuncSignatureT<object*, environment*, object*, type, size_t>(platform_call_convention));
+                        index_invoke->setArg(0, a_ctx.environment);
+                        index_invoke->setArg(1, a_ctx.return_object);
+                        index_invoke->setArg(2, a_ctx.lhs_type);
+                        index_invoke->setArg(3, a_ctx.lhs_data);
+                        index_invoke->setRet(0, a_ctx.lhs_data);
+                    })
 
                     cc.mov(asmjit::x86::qword_ptr(a_ctx.lhs_data), a_ctx.rhs_type);
                     cc.mov(asmjit::x86::qword_ptr(a_ctx.lhs_data, object_data_offset), a_ctx.rhs_data);
+
+                    pass.set_flags(pass_flag::clobber_return | pass_flag::clobber_left);
                 }
 
                 cc.mov(out_type, type::array);
                 cc.mov(out_data, a_ctx.identifier);
+
+                pass.set_flags(side_clobber_flag(a_side) | pass_flag::dynamic_expression | pass_flag::clobber_identifier);
 
                 break;
             }
@@ -226,16 +258,19 @@ namespace rebar {
         }
     }
 
-    void compiler::perform_assignable_node_pass(function_context& a_ctx, const node& a_node, pass_flags a_flags) {
+    void compiler::perform_assignable_node_pass(function_context& a_ctx, const node& a_node) {
+        flags out_flags = pass_flag::none;
+
+        function_context::pass_control pass(a_ctx);
+
         if (a_node.is_token()) {
             const token& tok = a_node.get_token();
 
             if (tok.is_identifier()) {
-                return load_identifier_pointer(a_ctx, tok.get_identifier());
+                 load_identifier_pointer(a_ctx, tok.get_identifier());
             }
         } else if (a_node.is_group() || a_node.is_selector() || a_node.is_expression()) {
-            const auto& expression = a_node.get_expression();
-            perform_assignable_expression_pass(a_ctx, expression);
+             perform_assignable_expression_pass(a_ctx, a_node.get_expression());
         }
     }
 }

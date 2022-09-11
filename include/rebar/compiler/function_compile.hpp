@@ -34,6 +34,8 @@ namespace rebar {
         ctx.rhs_type = cc.newGpq("rtype");
         ctx.rhs_data = cc.newGpq("rdata");
 
+        ctx.transfer = cc.newXmm("transfer");
+
         func_node->setArg(0, ctx.return_object);
         func_node->setArg(1, ctx.environment);
 
@@ -50,8 +52,6 @@ namespace rebar {
 
         if (a_parameters.size() > 0) {
             ctx.function_argument_stack = cc.newStack(a_parameters.size() * sizeof(object), alignof(object));
-
-            auto transfer = cc.newXmm();
 
             const auto& label_short_copy = cc.newLabel();
             const auto& label_short_copy_loop = cc.newLabel();
@@ -71,8 +71,7 @@ namespace rebar {
             cc.cmp(ctx.lhs_type, a_parameters.size());
             cc.jl(label_short_copy);
 
-            // Full Copy
-            // Only copy number of parameters.
+            // Full Copy - Only copy number of parameters.
             cc.xor_(ctx.lhs_type, ctx.lhs_type);  // Counter
 
             cc.bind(label_full_copy_loop);
@@ -80,8 +79,8 @@ namespace rebar {
             // TODO: Investigate shift not working with dqword_ptr.
             // asmjit::x86::dqword_ptr(ctx.identifier, ctx.lhs_type, 4)
 
-            cc.movdqa(transfer, asmjit::x86::dqword_ptr(ctx.identifier));
-            cc.movdqa(asmjit::x86::dqword_ptr(ctx.lhs_data), transfer);
+            cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.identifier));
+            cc.movdqa(asmjit::x86::dqword_ptr(ctx.lhs_data), ctx.transfer);
 
             cc.cmp(ctx.lhs_type, a_parameters.size() - 1);
             cc.je(label_end);
@@ -96,8 +95,7 @@ namespace rebar {
 
             cc.bind(label_short_copy);
 
-            // Short Copy
-            // Copy number of passed arguments and zero (null) remaining.
+            // Short Copy - Copy number of passed arguments and zero (null) remaining.
 
             cc.xor_(ctx.rhs_type, ctx.rhs_type);  // Counter
 
@@ -106,8 +104,8 @@ namespace rebar {
 
             cc.bind(label_short_copy_loop);
 
-            cc.movdqa(transfer, asmjit::x86::dqword_ptr(ctx.identifier));
-            cc.movdqa(asmjit::x86::dqword_ptr(ctx.lhs_data), transfer);
+            cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.identifier));
+            cc.movdqa(asmjit::x86::dqword_ptr(ctx.lhs_data), ctx.transfer);
 
             cc.inc(ctx.rhs_type);
             cc.add(ctx.lhs_data, 16);
@@ -118,11 +116,11 @@ namespace rebar {
 
             cc.bind(label_short_copy_zero);
 
-            cc.pxor(transfer, transfer);
+            cc.pxor(ctx.transfer, ctx.transfer);
 
             cc.bind(label_short_copy_zero_loop);
 
-            cc.movdqa(asmjit::x86::dqword_ptr(ctx.lhs_data), transfer);
+            cc.movdqa(asmjit::x86::dqword_ptr(ctx.lhs_data), ctx.transfer);
 
             cc.cmp(ctx.rhs_type, a_parameters.size() - 1);
             cc.je(label_end);

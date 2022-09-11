@@ -8,6 +8,8 @@
 #include <type_traits>
 #include <string_view>
 
+#define DEFINE_REBAR_FLAG(flag, number) constexpr static size_t flag = (number == 0) ? 0x0 : 0x1 << (number - 1)
+
 namespace rebar {
     using integer = std::conditional_t<sizeof(void*) == 8, int64_t, int32_t>;
     using number = std::conditional_t<sizeof(void*) == 8, double, float>;
@@ -15,6 +17,8 @@ namespace rebar {
 
     static_assert(sizeof(integer) == sizeof(void*));
     static_assert(sizeof(number) == sizeof(void*));
+
+    using flags = size_t;
 
     // Operators.
     enum class separator : enum_base {
