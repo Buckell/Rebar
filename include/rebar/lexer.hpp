@@ -19,7 +19,7 @@
 
 namespace rebar {
     [[nodiscard]] constexpr bool is_identifier_char(char c) noexcept {
-        return ('a' < c && c < 'z') || ('A' < c && c < 'Z') || ('0' < c && c < '9') || ('a' < c && c < 'z') || c == '_';
+        return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || c == '_';
     }
 
     struct symbol_mapping {
