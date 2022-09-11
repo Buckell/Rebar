@@ -9,6 +9,6 @@
                                 cc.commentf("[DEBUG] " __VA_ARGS__); \
                             }
 
-#define REBAR_CODE_GENERATION_GUARD(code) if (a_ctx.is_code_generation_enabled()) code;
+#define REBAR_CODE_GENERATION_GUARD(code) if (ctx.is_code_generation_enabled()) code;
 
 #endif //REBAR_COMPILER_MACRO_HPP

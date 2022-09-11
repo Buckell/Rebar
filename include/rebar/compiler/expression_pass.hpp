@@ -13,37 +13,37 @@
 #include "../environment.hpp"
 
 namespace rebar {
-    void compiler::perform_expression_pass(function_context& a_ctx, const node::expression& a_expression, output_side a_side) {
-        function_context::pass_control pass(a_ctx);
+    void compiler::perform_expression_pass(function_context& ctx, const node::expression& a_expression, output_side a_side) {
+        function_context::pass_control pass(ctx);
 
         pass.set_flags(side_clobber_flag(a_side));
 
-        auto [out_type, out_data] = a_ctx.expression_registers(a_side);
-        auto [opp_out_type, opp_out_data] = a_ctx.expression_registers(!a_side);
-        auto& cc = a_ctx.assembler;
+        auto [out_type, out_data] = ctx.expression_registers(a_side);
+        auto [opp_out_type, opp_out_data] = ctx.expression_registers(!a_side);
+        auto& cc = ctx.assembler;
 
         switch (a_expression.get_operation()) {
             case separator::space:
-                perform_node_pass(a_ctx, a_expression.get_operand(0), a_side);
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
                 break;
             case separator::assignment: {
                 pass.set_flags(pass_flag::dynamic_expression);
 
                 REBAR_CC_DEBUG("Perform assignment.");
 
-                //auto pre_assignable_pass = perform_assignable_node_pass(a_ctx, a_expression.get_operand(0), a_flags | pass_flag::void_code_generation);
-                //auto pre_value_pass = perform_node_pass(a_ctx, a_expression.get_operand(1), a_side, a_flags | pass_flag::void_code_generation);
+                pass.target_flags(pass_flag::void_code_generation);
+                perform_assignable_node_pass(ctx, a_expression.get_operand(0));
+                auto pre_assignable_pass = pass.output_flags();
 
                 /*if (pre_assignable_pass & pass_flag::constant_assignable) {
                     if (pre_value_pass & pass_flag::dynamic_expression) {
                         // TODO: Throw exception, dynamic expression assigned to constant.
                         m_environment.cout() << "CONSTANT EXCEPTION" << std::endl;
                     } else {
-                        perform_node_pass(a_ctx, a_expression.get_operand(1), a_side, a_flags | pass_flag::void_code_generation | pass_flag::evaluate_constant_expression);
-                        *a_ctx.constant_identifier = a_ctx.constant_side(a_side);
+                        *ctx.constant_identifier = ctx.constant_side(a_side);
                     }
-                } else*/ {
-                    perform_node_pass(a_ctx, a_expression.get_operand(1), a_side);
+                } else {
+                    perform_node_pass(ctx, a_expression.get_operand(1), a_side);
 
                     const auto& reference_needed = cc.newLabel();
                     const auto& reference_unneeded = cc.newLabel();
@@ -72,14 +72,14 @@ namespace rebar {
 
                     // TODO: Optimization: See if side stack operations can be avoided.
 
-                    a_ctx.push_side(a_side);
+                    ctx.push_side(a_side);
 
                     REBAR_CC_DEBUG("Evaluate assignee.");
 
-                    perform_assignable_node_pass(a_ctx, a_expression.get_operand(0));
+                    perform_assignable_node_pass(ctx, a_expression.get_operand(0));
 
-                    cc.mov(out_type, asmjit::x86::qword_ptr(a_ctx.identifier));
-                    cc.mov(out_data, asmjit::x86::qword_ptr(a_ctx.identifier, object_data_offset));
+                    cc.mov(out_type, asmjit::x86::qword_ptr(ctx.identifier));
+                    cc.mov(out_data, asmjit::x86::qword_ptr(ctx.identifier, object_data_offset));
 
                     REBAR_CC_DEBUG("Dereference origin data if needed.");
 
@@ -106,59 +106,59 @@ namespace rebar {
 
                     REBAR_CC_DEBUG("Pop value.");
 
-                    a_ctx.pop_side(a_side);
+                    ctx.pop_side(a_side);
 
                     REBAR_CC_DEBUG("Assign value.");
 
-                    cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier), out_type);
-                    cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier, object_data_offset), out_data);
+                    cc.mov(asmjit::x86::qword_ptr(ctx.identifier), out_type);
+                    cc.mov(asmjit::x86::qword_ptr(ctx.identifier, object_data_offset), out_data);
                 }
 
                 break;
             }
             case separator::addition: {
-                perform_node_pass(a_ctx, a_expression.get_operand(0), a_side);
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
 
                 bool push_required = true;
 
-                //if (flags_set(compiler_flag::optimize_bypass_register_save)) {
-                //    perform_node_pass(a_ctx, a_expression.get_operand(1), !a_side);
-                //    push_required = test_push_require_flags & side_clobber_flag(a_side);
-                //}
-
-                if (push_required) {
-                    a_ctx.push_side(a_side);
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    //push_required = test_push_require_flags & side_clobber_flag(a_side);
                 }
 
-                perform_node_pass(a_ctx, a_expression.get_operand(1), !a_side);
-
                 if (push_required) {
-                    a_ctx.pop_side(a_side);
+                    ctx.push_side(a_side);
                 }
 
-                cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object), out_type);
-                cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset), out_data);
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (push_required) {
+                    ctx.pop_side(a_side);
+                }
+
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
 
                 pass.set_flags(pass_flag::clobber_return);
 
                 REBAR_CODE_GENERATION_GUARD({
                     asmjit::InvokeNode* add_invoke;
                     cc.invoke(&add_invoke, _ext_object_add, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
-                    add_invoke->setArg(0, a_ctx.environment);
-                    add_invoke->setArg(1, a_ctx.return_object);
+                    add_invoke->setArg(0, ctx.environment);
+                    add_invoke->setArg(1, ctx.return_object);
                     add_invoke->setArg(2, opp_out_type);
                     add_invoke->setArg(3, opp_out_data);
                 })
 
-                cc.mov(out_type, asmjit::x86::qword_ptr(a_ctx.return_object));
-                cc.mov(out_data, asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset));
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
 
                 break;
             }
             case separator::addition_assignment: {
                 REBAR_CC_DEBUG("Addition.");
 
-                perform_assignable_node_pass(a_ctx, a_expression.get_operand(0));
+                perform_assignable_node_pass(ctx, a_expression.get_operand(0));
 
                 bool push_required = true;
 
@@ -168,33 +168,33 @@ namespace rebar {
                 //}
 
                 if (push_required) {
-                    a_ctx.push_identifier();
+                    ctx.push_identifier();
                 }
 
-                perform_node_pass(a_ctx, a_expression.get_operand(1), !a_side);
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
 
                 if (push_required) {
-                    a_ctx.pop_identifier();
+                    ctx.pop_identifier();
                 }
 
                 // TODO: OPTIMIZE: Only call for complex types.
 
-                cc.movdqa(a_ctx.transfer, asmjit::x86::dqword_ptr(a_ctx.identifier));
-                cc.movdqa(asmjit::x86::dqword_ptr(a_ctx.return_object), a_ctx.transfer);
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.identifier));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.return_object), ctx.transfer);
 
                 pass.set_flags(pass_flag::clobber_transfer);
 
                 REBAR_CODE_GENERATION_GUARD({
                     asmjit::InvokeNode* add_invoke;
                     cc.invoke(&add_invoke, _ext_object_add, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
-                    add_invoke->setArg(0, a_ctx.environment);
-                    add_invoke->setArg(1, a_ctx.return_object);
+                    add_invoke->setArg(0, ctx.environment);
+                    add_invoke->setArg(1, ctx.return_object);
                     add_invoke->setArg(2, opp_out_type);
                     add_invoke->setArg(3, opp_out_data);
                 })
 
-                cc.movdqa(a_ctx.transfer, asmjit::x86::dqword_ptr(a_ctx.return_object));
-                cc.movdqa(asmjit::x86::dqword_ptr(a_ctx.identifier), a_ctx.transfer);
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.return_object));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.identifier), ctx.transfer);
 
                 break;
             }
@@ -236,16 +236,16 @@ namespace rebar {
                 //    push_required = test_push_required_flags & pass_flag::clobber_left;
                 //}
 
-                perform_node_pass(a_ctx, a_expression.get_operand(0), output_side::lefthand);
+                perform_node_pass(ctx, a_expression.get_operand(0), output_side::lefthand);
 
                 if (push_required) {
-                    a_ctx.push_side(output_side::lefthand);
+                    ctx.push_side(output_side::lefthand);
                 }
 
-                perform_node_pass(a_ctx, a_expression.get_operand(1), output_side::righthand);
+                perform_node_pass(ctx, a_expression.get_operand(1), output_side::righthand);
 
                 if (push_required) {
-                    a_ctx.pop_side(output_side::lefthand);
+                    ctx.pop_side(output_side::lefthand);
                 }
 
                 const auto& label_end = cc.newLabel();
@@ -254,17 +254,17 @@ namespace rebar {
 
                 REBAR_CC_DEBUG("Comparing types.");
 
-                cc.cmp(a_ctx.lhs_type, a_ctx.rhs_type);
+                cc.cmp(ctx.lhs_type, ctx.rhs_type);
                 cc.jne(label_bad_compare);
 
                 REBAR_CC_DEBUG("Check simple comparison.");
 
-                cc.cmp(a_ctx.lhs_type, object::simply_comparable_end_boundary);
+                cc.cmp(ctx.lhs_type, object::simply_comparable_end_boundary);
                 cc.jg(label_complex_compare);
 
                 REBAR_CC_DEBUG("Simple comparison.");
 
-                cc.cmp(a_ctx.lhs_data, a_ctx.rhs_data);
+                cc.cmp(ctx.lhs_data, ctx.rhs_data);
                 cc.jne(label_bad_compare);
 
                 cc.mov(out_type, type::boolean);
@@ -349,14 +349,14 @@ namespace rebar {
             case separator::new_object: {
                 const auto& callable_node = a_expression.get_operand(0);
 
-                auto argument_memory = a_ctx.mark_argument_allocation();
+                auto argument_memory = ctx.mark_argument_allocation();
                 auto argument_allocation(argument_memory);
                 size_t argument_offset = 0;
 
                 for (auto it = a_expression.get_operands().begin() + 1; it != a_expression.get_operands().cend(); ++it) {
                     REBAR_CC_DEBUG("Assign function argument. (%d)", argument_offset);
 
-                    perform_node_pass(a_ctx, *it, a_side);
+                    perform_node_pass(ctx, *it, a_side);
 
                     cc.mov(argument_allocation, out_type);
                     argument_allocation.addOffset(object_data_offset);
@@ -391,26 +391,26 @@ namespace rebar {
 
                 REBAR_CC_DEBUG("Assign argument count. (%d)", a_expression.get_operands().size() - 1);
 
-                perform_node_pass(a_ctx, a_expression.get_operand(0), a_side);
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
 
-                cc.movabs(a_ctx.identifier, reinterpret_cast<size_t>(m_environment.get_arguments_size_pointer()));
-                cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier), a_expression.get_operands().size() - 1);
+                cc.movabs(ctx.identifier, reinterpret_cast<size_t>(m_environment.get_arguments_size_pointer()));
+                cc.mov(asmjit::x86::qword_ptr(ctx.identifier), a_expression.get_operands().size() - 1);
 
-                auto [env_arg_pointer, arg_alloc] = a_ctx.expression_registers(!a_side);
+                auto [env_arg_pointer, arg_alloc] = ctx.expression_registers(!a_side);
                 cc.mov(env_arg_pointer, reinterpret_cast<size_t>(m_environment.get_arguments_pointer_ref()));
                 cc.lea(arg_alloc, argument_memory);
                 cc.mov(asmjit::x86::qword_ptr(env_arg_pointer), arg_alloc);
 
-                cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object), out_type);
-                cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset), out_data);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
 
                 pass.set_flags(pass_flag::clobber_return | pass_flag::clobber_identifier);
 
                 REBAR_CODE_GENERATION_GUARD({
                     asmjit::InvokeNode* invoke_node;
                     cc.invoke(&invoke_node, _ext_object_new, asmjit::FuncSignatureT<void, object*, environment*>(platform_call_convention));
-                    invoke_node->setArg(0, a_ctx.environment);
-                    invoke_node->setArg(1, a_ctx.return_object);
+                    invoke_node->setArg(0, ctx.environment);
+                    invoke_node->setArg(1, ctx.return_object);
                 })
 
                 argument_offset = 0;
@@ -449,8 +449,8 @@ namespace rebar {
                     ++argument_offset;
                 }
 
-                cc.mov(out_type, asmjit::x86::qword_ptr(a_ctx.return_object));
-                cc.mov(out_data, asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset));
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
 
                 break;
             }
@@ -460,31 +460,31 @@ namespace rebar {
                 if (a_expression.count() == 2) {
                     REBAR_CC_DEBUG("Starting select operation.");
 
-                    perform_node_pass(a_ctx, a_expression.get_operand(0), a_side);
+                    perform_node_pass(ctx, a_expression.get_operand(0), a_side);
 
                     REBAR_CC_DEBUG("Move LHS data into return object.");
 
-                    cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object), out_type);
-                    cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset), out_data);
+                    cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                    cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
 
                     pass.target_flags(pass_flag::identifier_as_string);
-                    perform_node_pass(a_ctx, a_expression.get_operand(1), a_side);
+                    perform_node_pass(ctx, a_expression.get_operand(1), a_side);
 
                     REBAR_CC_DEBUG("Call select function.");
 
                     REBAR_CODE_GENERATION_GUARD({
                         asmjit::InvokeNode* select_invoke;
                         cc.invoke(&select_invoke, _ext_object_select, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
-                        select_invoke->setArg(0, a_ctx.environment);
-                        select_invoke->setArg(1, a_ctx.return_object);
+                        select_invoke->setArg(0, ctx.environment);
+                        select_invoke->setArg(1, ctx.return_object);
                         select_invoke->setArg(2, out_type);
                         select_invoke->setArg(3, out_data);
                     })
 
                     REBAR_CC_DEBUG("Move return data into correct registers.");
 
-                    cc.mov(out_type, asmjit::x86::qword_ptr(a_ctx.return_object));
-                    cc.mov(out_data, asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset));
+                    cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                    cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
 
                     pass.set_flags(pass_flag::clobber_return | pass_flag::clobber_return);
                     break;
@@ -493,30 +493,30 @@ namespace rebar {
                 if (a_expression.count() == 2) {
                     REBAR_CC_DEBUG("Starting select operation.");
 
-                    perform_node_pass(a_ctx, a_expression.get_operand(0), a_side);
+                    perform_node_pass(ctx, a_expression.get_operand(0), a_side);
 
                     REBAR_CC_DEBUG("Move LHS data into return object.");
 
-                    cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object), out_type);
-                    cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset), out_data);
+                    cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                    cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
 
-                    perform_node_pass(a_ctx, a_expression.get_operand(1), a_side);
+                    perform_node_pass(ctx, a_expression.get_operand(1), a_side);
 
                     REBAR_CC_DEBUG("Call select function.");
 
                     REBAR_CODE_GENERATION_GUARD({
                         asmjit::InvokeNode* select_invoke;
                         cc.invoke(&select_invoke, _ext_object_select, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
-                        select_invoke->setArg(0, a_ctx.environment);
-                        select_invoke->setArg(1, a_ctx.return_object);
+                        select_invoke->setArg(0, ctx.environment);
+                        select_invoke->setArg(1, ctx.return_object);
                         select_invoke->setArg(2, out_type);
                         select_invoke->setArg(3, out_data);
                     })
 
                     REBAR_CC_DEBUG("Move return data into correct registers.");
 
-                    cc.mov(out_type, asmjit::x86::qword_ptr(a_ctx.return_object));
-                    cc.mov(out_data, asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset));
+                    cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                    cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
 
                     pass.set_flags(pass_flag::clobber_return | pass_flag::clobber_return);
                     break;
@@ -532,7 +532,7 @@ namespace rebar {
             case separator::operation_call: {
                 const auto& callable_node = a_expression.get_operand(0);
 
-                auto argument_memory = a_ctx.mark_argument_allocation();
+                auto argument_memory = ctx.mark_argument_allocation();
                 auto argument_allocation(argument_memory);
                 size_t argument_offset = 0;
 
@@ -544,7 +544,7 @@ namespace rebar {
                     if (expr.get_operation() == separator::dot) {
                         dot_call = true;
 
-                        perform_node_pass(a_ctx, expr.get_operand(0), a_side);
+                        perform_node_pass(ctx, expr.get_operand(0), a_side);
 
                         cc.mov(argument_allocation, out_type);
                         argument_allocation.addOffset(object_data_offset);
@@ -558,7 +558,7 @@ namespace rebar {
                 for (auto it = a_expression.get_operands().begin() + 1; it != a_expression.get_operands().cend(); ++it) {
                     REBAR_CC_DEBUG("Assign function argument. (%d)", argument_offset);
 
-                    perform_node_pass(a_ctx, *it, a_side);
+                    perform_node_pass(ctx, *it, a_side);
 
                     cc.mov(argument_allocation, out_type);
                     argument_allocation.addOffset(object_data_offset);
@@ -596,44 +596,44 @@ namespace rebar {
 
                     REBAR_CC_DEBUG("Move LHS data into return object.");
 
-                    cc.lea(a_ctx.identifier, argument_memory);
-                    cc.mov(out_type, asmjit::x86::qword_ptr(a_ctx.identifier));
-                    cc.mov(out_data, asmjit::x86::qword_ptr(a_ctx.identifier, object_data_offset));
-                    cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object), out_type);
-                    cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset), out_data);
+                    cc.lea(ctx.identifier, argument_memory);
+                    cc.mov(out_type, asmjit::x86::qword_ptr(ctx.identifier));
+                    cc.mov(out_data, asmjit::x86::qword_ptr(ctx.identifier, object_data_offset));
+                    cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                    cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
 
                     pass.set_flags(pass_flag::clobber_return);
 
                     pass.target_flags(pass_flag::identifier_as_string);
-                    perform_node_pass(a_ctx, a_expression.get_operand(0).get_expression().get_operand(1), a_side);
+                    perform_node_pass(ctx, a_expression.get_operand(0).get_expression().get_operand(1), a_side);
 
                     REBAR_CC_DEBUG("Call select function.");
 
                     REBAR_CODE_GENERATION_GUARD({
                         asmjit::InvokeNode* select_invoke;
                         cc.invoke(&select_invoke, _ext_object_select, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
-                        select_invoke->setArg(0, a_ctx.environment);
-                        select_invoke->setArg(1, a_ctx.return_object);
+                        select_invoke->setArg(0, ctx.environment);
+                        select_invoke->setArg(1, ctx.return_object);
                         select_invoke->setArg(2, out_type);
                         select_invoke->setArg(3, out_data);
                     })
 
                     REBAR_CC_DEBUG("Move return data into correct registers.");
 
-                    cc.mov(out_type, asmjit::x86::qword_ptr(a_ctx.return_object));
-                    cc.mov(out_data, asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset));
+                    cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                    cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
                 } else {
-                    perform_node_pass(a_ctx, callable_node, a_side);
+                    perform_node_pass(ctx, callable_node, a_side);
                 }
 
                 REBAR_CC_DEBUG("Assign argument data. (%d)", a_expression.get_operands().size() - 1);
 
-                cc.movabs(a_ctx.identifier, reinterpret_cast<size_t>(m_environment.get_arguments_size_pointer()));
-                cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier), a_expression.get_operands().size() - 1 + dot_call);
+                cc.movabs(ctx.identifier, reinterpret_cast<size_t>(m_environment.get_arguments_size_pointer()));
+                cc.mov(asmjit::x86::qword_ptr(ctx.identifier), a_expression.get_operands().size() - 1 + dot_call);
 
                 pass.set_flags(pass_flag::clobber_identifier | pass_flag::clobber_return);
 
-                auto [env_arg_pointer, arg_alloc] = a_ctx.expression_registers(!a_side);
+                auto [env_arg_pointer, arg_alloc] = ctx.expression_registers(!a_side);
                 cc.mov(env_arg_pointer, reinterpret_cast<size_t>(m_environment.get_arguments_pointer_ref()));
                 cc.lea(arg_alloc, argument_memory);
                 cc.mov(asmjit::x86::qword_ptr(env_arg_pointer), arg_alloc);
@@ -642,8 +642,8 @@ namespace rebar {
                     // TODO: Proper call.
                     asmjit::InvokeNode* invoke_node;
                     cc.invoke(&invoke_node, out_data, asmjit::FuncSignatureT<void, object*, environment*>(platform_call_convention));
-                    invoke_node->setArg(0, a_ctx.return_object);
-                    invoke_node->setArg(1, a_ctx.environment);
+                    invoke_node->setArg(0, ctx.return_object);
+                    invoke_node->setArg(1, ctx.environment);
                 })
 
                 argument_offset = dot_call ? 1 : 0;
@@ -686,10 +686,10 @@ namespace rebar {
                     ++argument_offset;
                 }
 
-                cc.mov(out_type, asmjit::x86::qword_ptr(a_ctx.return_object));
-                cc.mov(out_data, asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset));
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
 
-                a_ctx.unmark_argument_allocation();
+                ctx.unmark_argument_allocation();
 
                 break;
             }
@@ -698,12 +698,12 @@ namespace rebar {
         }
     }
 
-    void compiler::perform_assignable_expression_pass(function_context& a_ctx, const node::expression& a_expression) {
-        function_context::pass_control pass(a_ctx);
+    void compiler::perform_assignable_expression_pass(function_context& ctx, const node::expression& a_expression) {
+        function_context::pass_control pass(ctx);
 
         pass.set_flags(pass_flag::clobber_identifier);
 
-        auto& cc = a_ctx.assembler;
+        auto& cc = ctx.assembler;
 
         switch (a_expression.get_operation()) {
             case separator::space: {
@@ -739,33 +739,33 @@ namespace rebar {
 
                     if (tok.is_identifier()) {
                         if (flag_local) {
-                            auto& local_table = a_ctx.local_variable_list.back();
+                            auto& local_table = ctx.local_variable_list.back();
 
                             if (local_table.find(tok.get_identifier()) == local_table.cend()) {
-                                a_ctx.local_variable_list.back().emplace(tok.get_identifier(), a_ctx.local_stack_position);
+                                ctx.local_variable_list.back().emplace(tok.get_identifier(), ctx.local_stack_position);
 
                                 REBAR_CC_DEBUG("Initialize local to null. (%s)", tok.get_identifier().data());
 
-                                asmjit::x86::Mem locals_stack(a_ctx.locals_stack);
-                                locals_stack.addOffset(a_ctx.local_stack_position * sizeof(object));
-                                cc.lea(a_ctx.identifier, locals_stack);
-                                cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier), type::null);
-                                cc.mov(asmjit::x86::qword_ptr(a_ctx.identifier, object_data_offset), 0);
+                                asmjit::x86::Mem locals_stack(ctx.locals_stack);
+                                locals_stack.addOffset(ctx.local_stack_position * sizeof(object));
+                                cc.lea(ctx.identifier, locals_stack);
+                                cc.mov(asmjit::x86::qword_ptr(ctx.identifier), type::null);
+                                cc.mov(asmjit::x86::qword_ptr(ctx.identifier, object_data_offset), 0);
 
                                 pass.set_flags(pass_flag::clobber_identifier);
 
-                                ++a_ctx.local_stack_position;
-                                ++a_ctx.block_local_offsets.back();
+                                ++ctx.local_stack_position;
+                                ++ctx.block_local_offsets.back();
                             }
                         } else if (flag_constant) {
-                            a_ctx.constant_tables.back().emplace(tok.get_identifier(), object{});
+                            ctx.constant_tables.back().emplace(tok.get_identifier(), object{});
                         }
 
-                        load_identifier_pointer(a_ctx, tok.get_identifier());
+                        load_identifier_pointer(ctx, tok.get_identifier());
                     }
                 }
 
-                perform_assignable_node_pass(a_ctx, assignee_op);
+                perform_assignable_node_pass(ctx, assignee_op);
                 break;
             }
             case separator::addition_assignment: {
@@ -810,29 +810,29 @@ namespace rebar {
             case separator::namespace_index:
             case separator::direct:
             case separator::operation_index: {
-                auto [out_type, out_data] = a_ctx.expression_registers(output_side::lefthand);
+                auto [out_type, out_data] = ctx.expression_registers(output_side::lefthand);
 
                 REBAR_CC_DEBUG("Starting index operation.");
 
-                perform_node_pass(a_ctx, a_expression.get_operand(0), output_side::lefthand);
+                perform_node_pass(ctx, a_expression.get_operand(0), output_side::lefthand);
 
                 REBAR_CC_DEBUG("Move LHS data into return object.");
 
-                cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object), out_type);
-                cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset), out_data);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
 
-                perform_node_pass(a_ctx, a_expression.get_operand(1), output_side::lefthand);
+                perform_node_pass(ctx, a_expression.get_operand(1), output_side::lefthand);
 
                 REBAR_CC_DEBUG("Call index function.");
 
                 REBAR_CODE_GENERATION_GUARD({
                     asmjit::InvokeNode *index_invoke;
                     cc.invoke(&index_invoke, _ext_object_index, asmjit::FuncSignatureT<object *, environment *, object *, type, size_t>(platform_call_convention));
-                    index_invoke->setArg(0, a_ctx.environment);
-                    index_invoke->setArg(1, a_ctx.return_object);
+                    index_invoke->setArg(0, ctx.environment);
+                    index_invoke->setArg(1, ctx.return_object);
                     index_invoke->setArg(2, out_type);
                     index_invoke->setArg(3, out_data);
-                    index_invoke->setRet(0, a_ctx.identifier);
+                    index_invoke->setRet(0, ctx.identifier);
                 })
 
                 pass.set_flags(pass_flag::clobber_identifier | pass_flag::clobber_return);
@@ -840,30 +840,30 @@ namespace rebar {
                 break;
             }
             case separator::dot: {
-                auto [out_type, out_data] = a_ctx.expression_registers(output_side::lefthand);
+                auto [out_type, out_data] = ctx.expression_registers(output_side::lefthand);
 
                 REBAR_CC_DEBUG("Starting index operation.");
 
-                perform_node_pass(a_ctx, a_expression.get_operand(0), output_side::lefthand);
+                perform_node_pass(ctx, a_expression.get_operand(0), output_side::lefthand);
 
                 REBAR_CC_DEBUG("Move LHS data into return object.");
 
-                cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object), out_type);
-                cc.mov(asmjit::x86::qword_ptr(a_ctx.return_object, object_data_offset), out_data);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
 
                 pass.target_flags(pass_flag::identifier_as_string);
-                perform_node_pass(a_ctx, a_expression.get_operand(1), output_side::lefthand);
+                perform_node_pass(ctx, a_expression.get_operand(1), output_side::lefthand);
 
                 REBAR_CC_DEBUG("Call index function.");
 
                 REBAR_CODE_GENERATION_GUARD({
                     asmjit::InvokeNode *index_invoke;
                     cc.invoke(&index_invoke, _ext_object_index, asmjit::FuncSignatureT<object *, environment *, object *, type, size_t>(platform_call_convention));
-                    index_invoke->setArg(0, a_ctx.environment);
-                    index_invoke->setArg(1, a_ctx.return_object);
+                    index_invoke->setArg(0, ctx.environment);
+                    index_invoke->setArg(1, ctx.return_object);
                     index_invoke->setArg(2, out_type);
                     index_invoke->setArg(3, out_data);
-                    index_invoke->setRet(0, a_ctx.identifier);
+                    index_invoke->setRet(0, ctx.identifier);
                 })
 
                 pass.set_flags(pass_flag::clobber_identifier | pass_flag::clobber_return);

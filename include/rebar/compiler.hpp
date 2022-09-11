@@ -379,17 +379,17 @@ namespace rebar {
     private:
         function compile_function(parse_unit& a_unit, const node::parameter_list& a_parameters, const node::block& a_block);
 
-        void load_token(function_context& a_ctx, const token& a_token, output_side a_side);
-        void load_identifier(function_context& a_ctx, std::string_view a_identifier, output_side a_side);
-        void load_identifier_pointer(function_context& a_ctx, std::string_view a_identifier);
+        void load_token(function_context& ctx, const token& a_token, output_side a_side);
+        void load_identifier(function_context& ctx, std::string_view a_identifier, output_side a_side);
+        void load_identifier_pointer(function_context& ctx, std::string_view a_identifier);
 
         void perform_preliminary_function_scan(function_context& a_ctx, const node::block& a_block);
 
-        void perform_block_pass(function_context& a_ctx, const node::block& a_block);
-        void perform_node_pass(function_context& a_ctx, const node& a_node, output_side a_side = output_side::lefthand);
-        void perform_expression_pass(function_context& a_ctx, const node::expression& a_expression, output_side a_side = output_side::lefthand);
-        void perform_assignable_node_pass(function_context& a_ctx, const node& a_node);
-        void perform_assignable_expression_pass(function_context& a_ctx, const node::expression& a_expression);
+        void perform_block_pass(function_context& ctx, const node::block& a_block);
+        void perform_node_pass(function_context& ctx, const node& a_node, output_side a_side = output_side::lefthand);
+        void perform_expression_pass(function_context& ctx, const node::expression& a_expression, output_side a_side = output_side::lefthand);
+        void perform_assignable_node_pass(function_context& ctx, const node& a_node);
+        void perform_assignable_expression_pass(function_context& ctx, const node::expression& a_expression);
     };
 
     static compiler::output_side operator ! (compiler::output_side a_pos) noexcept {

@@ -11,20 +11,20 @@
 #include "../compiler.hpp"
 
 namespace rebar {
-    void compiler::load_token(function_context& a_ctx, const token& a_token, const output_side a_side) {
-        function_context::pass_control pass(a_ctx);
+    void compiler::load_token(function_context& ctx, const token& a_token, const output_side a_side) {
+        function_context::pass_control pass(ctx);
 
-        auto [out_type, out_data] = a_ctx.expression_registers(a_side);
-        auto& cc = a_ctx.assembler;
+        auto [out_type, out_data] = ctx.expression_registers(a_side);
+        auto& cc = ctx.assembler;
 
-        object& constant_assignable = a_ctx.constant_side(a_side);
+        object& constant_assignable = ctx.constant_side(a_side);
         bool evaluate_constant = pass.flags_set(pass_flag::evaluate_constant_expression);
 
         switch (a_token.m_type) {
             case token::type::string_literal: {
                 REBAR_CC_DEBUG("Loading string literal. (\"%s\")", a_token.get_string_literal().data());
 
-                string literal = a_ctx.source.emplace_string_dependency(a_token.get_string_literal());
+                string literal = ctx.source.emplace_string_dependency(a_token.get_string_literal());
 
                 cc.mov(out_type, type::string);
                 cc.movabs(out_data, literal.data());
@@ -32,14 +32,13 @@ namespace rebar {
                 break;
             }
             case token::type::identifier:
-                load_identifier(a_ctx, a_token.get_identifier(), a_side);
-
+                load_identifier(ctx, a_token.get_identifier(), a_side);
                 break;
             case token::type::integer_literal:
                 REBAR_CC_DEBUG("Loading integer literal. (%d)", a_token.get_integer_literal());
 
                 cc.mov(out_type, type::integer);
-                a_ctx.efficient_load_integer(out_data, a_token.get_integer_literal());
+                ctx.efficient_load_integer(out_data, a_token.get_integer_literal());
 
                 if (evaluate_constant) {
                     constant_assignable = a_token.get_integer_literal();
@@ -102,24 +101,24 @@ namespace rebar {
         }
     }
 
-    void compiler::load_identifier(function_context& a_ctx, std::string_view a_identifier, output_side a_side) {
-        function_context::pass_control pass(a_ctx);
+    void compiler::load_identifier(function_context& ctx, std::string_view a_identifier, output_side a_side) {
+        function_context::pass_control pass(ctx);
 
-        auto [out_type, out_data] = a_ctx.expression_registers(a_side);
-        auto& cc = a_ctx.assembler;
+        auto [out_type, out_data] = ctx.expression_registers(a_side);
+        auto& cc = ctx.assembler;
 
-        object& constant_assignable = a_ctx.constant_side(a_side);
+        object& constant_assignable = ctx.constant_side(a_side);
         bool evaluate_constant = pass.flags_set(pass_flag::evaluate_constant_expression);
 
-        auto& local_tables = a_ctx.local_variable_list;
-        auto& constant_tables = a_ctx.constant_tables;
+        auto& local_tables = ctx.local_variable_list;
+        auto& constant_tables = ctx.constant_tables;
 
         // Find identifier in local tables.
         auto constant_table_it = constant_tables.rbegin();
         for (auto local_table_it = local_tables.rbegin(); local_table_it != local_tables.crend(); ++local_table_it, ++constant_table_it) {
             for (auto& entry : *constant_table_it) {
                 if (entry.first == a_identifier) {
-                    a_ctx.load_constant(a_side, entry.second);
+                    ctx.load_constant(a_side, entry.second);
 
                     if (evaluate_constant) {
                         constant_assignable = entry.second;
@@ -136,7 +135,7 @@ namespace rebar {
                 if (entry.first == a_identifier) {
                     REBAR_CC_DEBUG("Loading local identifier. (Stack Pos. %d - \"%s\")", entry.second, a_identifier.data());
 
-                    asmjit::x86::Mem locals_stack(a_ctx.locals_stack);
+                    asmjit::x86::Mem locals_stack(ctx.locals_stack);
                     locals_stack.addOffset(static_cast<uint64_t>(entry.second * sizeof(object)));
                     locals_stack.setSize(sizeof(void*));
 
@@ -151,11 +150,11 @@ namespace rebar {
             }
         }
 
-        for (size_t i = 0; i < a_ctx.source.parameters.size(); ++i) {
-            const auto& parameter = a_ctx.source.parameters[i];
+        for (size_t i = 0; i < ctx.source.parameters.size(); ++i) {
+            const auto& parameter = ctx.source.parameters[i];
 
             if (parameter.identifier == a_identifier) {
-                auto parameter_space(a_ctx.function_argument_stack);
+                auto parameter_space(ctx.function_argument_stack);
                 parameter_space.addOffset(i * sizeof(object));
 
                 cc.mov(out_type, parameter_space);
@@ -170,7 +169,7 @@ namespace rebar {
 
         // Pull global.
 
-        string o = a_ctx.source.emplace_string_dependency(a_identifier);
+        string o = ctx.source.emplace_string_dependency(a_identifier);
 
         cc.mov(out_type, type::string);
         cc.mov(out_data, o.data());
@@ -178,7 +177,7 @@ namespace rebar {
         REBAR_CODE_GENERATION_GUARD({
             asmjit::InvokeNode* invoke_node;
             cc.invoke(&invoke_node, _ext_index_global, asmjit::FuncSignatureT<object*, environment*, uint64_t, uint64_t>(asmjit::CallConvId::kX64Windows));
-            invoke_node->setArg(0, a_ctx.environment);
+            invoke_node->setArg(0, ctx.environment);
             invoke_node->setArg(1, out_type);
             invoke_node->setArg(2, out_data);
             invoke_node->setRet(0, out_data);
@@ -191,20 +190,20 @@ namespace rebar {
         return;
     }
 
-    void compiler::load_identifier_pointer(function_context& a_ctx, const std::string_view a_identifier) {
-        function_context::pass_control pass(a_ctx);
+    void compiler::load_identifier_pointer(function_context& ctx, const std::string_view a_identifier) {
+        function_context::pass_control pass(ctx);
 
-        auto& cc = a_ctx.assembler;
+        auto& cc = ctx.assembler;
 
-        auto& local_tables = a_ctx.local_variable_list;
-        auto& constant_tables = a_ctx.constant_tables;
+        auto& local_tables = ctx.local_variable_list;
+        auto& constant_tables = ctx.constant_tables;
 
         // Find identifier in local tables.
         auto constant_table_it = constant_tables.rbegin();
         for (auto local_table_it = local_tables.rbegin(); local_table_it != local_tables.crend(); ++local_table_it, ++constant_table_it) {
             for (auto& entry : *constant_table_it) {
                 if (entry.first == a_identifier) {
-                    a_ctx.constant_identifier = &entry.second;
+                    ctx.constant_identifier = &entry.second;
                     pass.set_flags(pass_flag::constant_assignable);
                     return;
                 }
@@ -214,10 +213,10 @@ namespace rebar {
                 if (entry.first == a_identifier) {
                     REBAR_CC_DEBUG("Loading local identifier pointer. (Stack Pos. %d - \"%s\")", entry.second, a_identifier.data());
 
-                    asmjit::x86::Mem locals_stack(a_ctx.locals_stack);
+                    asmjit::x86::Mem locals_stack(ctx.locals_stack);
                     locals_stack.addOffset(static_cast<uint64_t>(entry.second * sizeof(object)));
 
-                    cc.lea(a_ctx.identifier, locals_stack);
+                    cc.lea(ctx.identifier, locals_stack);
 
                     pass.set_flags(pass_flag::clobber_identifier | pass_flag::dynamic_expression);
                     return;
@@ -225,14 +224,14 @@ namespace rebar {
             }
         }
 
-        for (size_t i = 0; i < a_ctx.source.parameters.size(); ++i) {
-            const auto& parameter = a_ctx.source.parameters[i];
+        for (size_t i = 0; i < ctx.source.parameters.size(); ++i) {
+            const auto& parameter = ctx.source.parameters[i];
 
             if (parameter.identifier == a_identifier) {
-                auto parameter_space(a_ctx.function_argument_stack);
+                auto parameter_space(ctx.function_argument_stack);
                 parameter_space.addOffset(i * sizeof(object));
 
-                cc.lea(a_ctx.identifier, parameter_space);
+                cc.lea(ctx.identifier, parameter_space);
 
                 pass.set_flags(pass_flag::clobber_identifier | pass_flag::dynamic_expression);
             }
@@ -240,18 +239,18 @@ namespace rebar {
 
         // Pull global.
 
-        string o = a_ctx.source.emplace_string_dependency(a_identifier);
+        string o = ctx.source.emplace_string_dependency(a_identifier);
 
-        cc.mov(a_ctx.lhs_type, type::string);
-        cc.mov(a_ctx.lhs_data, o.data());
+        cc.mov(ctx.lhs_type, type::string);
+        cc.mov(ctx.lhs_data, o.data());
 
         REBAR_CODE_GENERATION_GUARD({
             asmjit::InvokeNode* invoke_node;
             cc.invoke(&invoke_node, _ext_index_global, asmjit::FuncSignatureT<object*, environment*, uint64_t, uint64_t>(platform_call_convention));
-            invoke_node->setArg(0, a_ctx.environment);
-            invoke_node->setArg(1, a_ctx.lhs_type);
-            invoke_node->setArg(2, a_ctx.lhs_data);
-            invoke_node->setRet(0, a_ctx.identifier);
+            invoke_node->setArg(0, ctx.environment);
+            invoke_node->setArg(1, ctx.lhs_type);
+            invoke_node->setArg(2, ctx.lhs_data);
+            invoke_node->setRet(0, ctx.identifier);
         })
 
         pass.set_flags(pass_flag::clobber_identifier | pass_flag::dynamic_expression | pass_flag::clobber_left);
