@@ -8,7 +8,7 @@
 #include "../compiler.hpp"
 
 namespace rebar {
-    void compiler::perform_preliminary_function_scan(function_context& a_ctx, const node::block& a_block) {
+    void compiler::perform_preliminary_function_scan(function_context& ctx, const node::block& a_block) {
         size_t max_locals_count = 0;
 
         std::function<void (const node::block&, size_t)> block_pass;
@@ -105,7 +105,7 @@ namespace rebar {
         // Perform pass to map local variables to stack space;
         block_pass(a_block, 0);
 
-        a_ctx.max_locals_count = max_locals_count;
+        ctx.max_locals_count = max_locals_count;
     }
 }
 

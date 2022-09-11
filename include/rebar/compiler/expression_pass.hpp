@@ -31,13 +31,13 @@ namespace rebar {
 
                 REBAR_CC_DEBUG("Perform assignment.");
 
-                pass.target_flags(pass_flag::void_code_generation);
+                ctx.target_flags(pass_flag::void_code_generation);
                 perform_assignable_node_pass(ctx, a_expression.get_operand(0));
-                auto pre_assignable_pass = pass.output_flags();
+                auto pre_assignable_pass = ctx.output_flags();
 
-                pass.target_flags(pass_flag::void_code_generation | pass_flag::evaluate_constant_expression);
+                ctx.target_flags(pass_flag::void_code_generation | pass_flag::evaluate_constant_expression);
                 perform_node_pass(ctx, a_expression.get_operand(1), a_side);
-                auto pre_value_pass = pass.output_flags();
+                auto pre_value_pass = ctx.output_flags();
 
                 if (pre_assignable_pass & pass_flag::constant_assignable) {
                     if (pre_value_pass & pass_flag::dynamic_expression) {
@@ -471,7 +471,7 @@ namespace rebar {
                     cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
                     cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
 
-                    pass.target_flags(pass_flag::identifier_as_string);
+                    ctx.target_flags(pass_flag::identifier_as_string);
                     perform_node_pass(ctx, a_expression.get_operand(1), a_side);
 
                     REBAR_CC_DEBUG("Call select function.");
@@ -608,7 +608,7 @@ namespace rebar {
 
                     pass.set_flags(pass_flag::clobber_return);
 
-                    pass.target_flags(pass_flag::identifier_as_string);
+                    ctx.target_flags(pass_flag::identifier_as_string);
                     perform_node_pass(ctx, a_expression.get_operand(0).get_expression().get_operand(1), a_side);
 
                     REBAR_CC_DEBUG("Call select function.");
@@ -855,7 +855,7 @@ namespace rebar {
                 cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
                 cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
 
-                pass.target_flags(pass_flag::identifier_as_string);
+                ctx.target_flags(pass_flag::identifier_as_string);
                 perform_node_pass(ctx, a_expression.get_operand(1), output_side::lefthand);
 
                 REBAR_CC_DEBUG("Call index function.");

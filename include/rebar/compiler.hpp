@@ -338,6 +338,25 @@ namespace rebar {
                 return input_flag_stack[a_pass_index];
             }
 
+            // Set output flag(s).
+            void set_flags(flags a_flags) noexcept {
+                get_output_flags() |= a_flags;
+            }
+
+            // Set input flag(s) of next pass.
+            void target_flags(flags a_flags) noexcept {
+                next_pass_flags() |= a_flags;
+            }
+
+            // Check current input flags.
+            [[nodiscard]] bool flags_set(flags a_flags) noexcept {
+                return get_input_flags() & a_flags;
+            }
+
+            [[nodiscard]] flags output_flags() const noexcept {
+                return last_output;
+            }
+
             // RAII controller for passes.
             struct pass_control {
                 function_context& ctx;
@@ -356,18 +375,9 @@ namespace rebar {
                     ctx.get_output_flags(pass_index) |= a_flags;
                 }
 
-                // Set input flag(s) of next pass.
-                void target_flags(flags a_flags) noexcept {
-                    ctx.next_pass_flags(pass_index) |= a_flags;
-                }
-
                 // Check current input flags.
                 [[nodiscard]] bool flags_set(flags a_flags) noexcept {
                     return ctx.get_input_flags(pass_index) & a_flags;
-                }
-
-                [[nodiscard]] flags output_flags() const noexcept {
-                    return ctx.last_output;
                 }
             };
         };
@@ -387,7 +397,7 @@ namespace rebar {
         void load_identifier(function_context& ctx, std::string_view a_identifier, output_side a_side);
         void load_identifier_pointer(function_context& ctx, std::string_view a_identifier);
 
-        void perform_preliminary_function_scan(function_context& a_ctx, const node::block& a_block);
+        void perform_preliminary_function_scan(function_context& ctx, const node::block& a_block);
 
         void perform_block_pass(function_context& ctx, const node::block& a_block);
         void perform_node_pass(function_context& ctx, const node& a_node, output_side a_side = output_side::lefthand);

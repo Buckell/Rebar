@@ -84,7 +84,7 @@ namespace rebar {
 
                 REBAR_CC_DEBUG("Performing function declaration. (%s)", function_name);
 
-                pass.target_flags((decl.m_tags == function_tags::basic) ? pass_flag::local_identifier : pass_flag::none);
+                ctx.target_flags((decl.m_tags == function_tags::basic) ? pass_flag::local_identifier : pass_flag::none);
                 perform_assignable_expression_pass(ctx, decl.m_identifier);
 
                 cc.mov(out_type, type::function);
@@ -156,7 +156,7 @@ namespace rebar {
 
                     ctx.push_identifier();
 
-                    pass.target_flags(pass_flag::identifier_as_string);
+                    ctx.target_flags(pass_flag::identifier_as_string);
                     perform_node_pass(ctx, entry.first, output_side::lefthand);
 
                     ctx.push_side(output_side::lefthand);
