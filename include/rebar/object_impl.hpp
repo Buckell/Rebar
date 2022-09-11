@@ -545,7 +545,7 @@ namespace rebar {
 
     object object::bitwise_and(environment& a_environment, object lhs, const object rhs) {
         if ((lhs.is_integer() || lhs.is_number()) && (rhs.is_integer() || rhs.is_number())) {
-            return { lhs.m_type, lhs.m_data | rhs.m_data };
+            return { lhs.m_type, lhs.m_data & rhs.m_data };
         } else {
             if (lhs.is_native_object()) {
                 return lhs.get_native_object().overload_bitwise_and(a_environment, rhs);
