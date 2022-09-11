@@ -294,7 +294,7 @@ namespace rebar {
 
                     escape_mode = character == '\\';
                     ++scan_index;
-                } else if (character == '/') {
+                } else if (scan_index + 1 < a_string.size() && character == '/' && (a_string[scan_index + 1] == '/' || a_string[scan_index + 1] == '*')) {
                     if (a_string[scan_index + 1] == '/') {
                         line_comment_mode = true;
                         scan_index += 2;
