@@ -19,8 +19,47 @@ namespace rebar {
     }
 
     void _ext_object_add(environment* a_env, object* a_lhs_return, type a_rhs_type, size_t a_rhs_data) {
-        object rhs(a_rhs_type, a_rhs_data);
-        *a_lhs_return = object::add(*a_env, *a_lhs_return, rhs);
+        *a_lhs_return = object::add(*a_env, *a_lhs_return, { a_rhs_type, a_rhs_data });
+    }
+
+    void _ext_object_subtract(environment* a_env, object* a_lhs_return, type a_rhs_type, size_t a_rhs_data) {
+        *a_lhs_return = object::subtract(*a_env, *a_lhs_return, { a_rhs_type, a_rhs_data });
+    }
+
+    void _ext_object_multiply(environment* a_env, object* a_lhs_return, type a_rhs_type, size_t a_rhs_data) {
+        *a_lhs_return = object::multiply(*a_env, *a_lhs_return, { a_rhs_type, a_rhs_data });
+    }
+
+    void _ext_object_divide(environment* a_env, object* a_lhs_return, type a_rhs_type, size_t a_rhs_data) {
+        *a_lhs_return = object::divide(*a_env, *a_lhs_return, { a_rhs_type, a_rhs_data });
+    }
+
+    void _ext_object_bitwise_or(environment* a_env, object* a_lhs_return, type a_rhs_type, size_t a_rhs_data) {
+        *a_lhs_return = object::bitwise_or(*a_env, *a_lhs_return, { a_rhs_type, a_rhs_data });
+    }
+
+    void _ext_object_bitwise_xor(environment* a_env, object* a_lhs_return, type a_rhs_type, size_t a_rhs_data) {
+        *a_lhs_return = object::bitwise_xor(*a_env, *a_lhs_return, { a_rhs_type, a_rhs_data });
+    }
+
+    void _ext_object_bitwise_and(environment* a_env, object* a_lhs_return, type a_rhs_type, size_t a_rhs_data) {
+        *a_lhs_return = object::bitwise_and(*a_env, *a_lhs_return, { a_rhs_type, a_rhs_data });
+    }
+
+    void _ext_object_shift_right(environment* a_env, object* a_lhs_return, type a_rhs_type, size_t a_rhs_data) {
+        *a_lhs_return = object::shift_right(*a_env, *a_lhs_return, { a_rhs_type, a_rhs_data });
+    }
+
+    void _ext_object_shift_left(environment* a_env, object* a_lhs_return, type a_rhs_type, size_t a_rhs_data) {
+        *a_lhs_return = object::shift_left(*a_env, *a_lhs_return, {a_rhs_type, a_rhs_data});
+    }
+
+    void _ext_object_exponentiate(environment* a_env, object* a_lhs_return, type a_rhs_type, size_t a_rhs_data) {
+        *a_lhs_return = object::exponentiate(*a_env, *a_lhs_return, {a_rhs_type, a_rhs_data});
+    }
+
+    void _ext_object_modulus(environment* a_env, object* a_lhs_return, type a_rhs_type, size_t a_rhs_data) {
+        *a_lhs_return = object::modulus(*a_env, *a_lhs_return, {a_rhs_type, a_rhs_data});
     }
 }
 

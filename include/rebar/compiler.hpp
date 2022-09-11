@@ -348,13 +348,12 @@ namespace rebar {
                 next_pass_flags() |= a_flags;
             }
 
-            // Check current input flags.
-            [[nodiscard]] bool flags_set(flags a_flags) noexcept {
-                return get_input_flags() & a_flags;
-            }
-
             [[nodiscard]] flags output_flags() const noexcept {
                 return last_output;
+            }
+
+            [[nodiscard]] bool out_flags_set(flags a_flags) noexcept {
+                return get_input_flags() & a_flags;
             }
 
             // RAII controller for passes.

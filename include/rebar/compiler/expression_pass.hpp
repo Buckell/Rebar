@@ -22,6 +22,8 @@ namespace rebar {
         auto [opp_out_type, opp_out_data] = ctx.expression_registers(!a_side);
         auto& cc = ctx.assembler;
 
+        bool evaluate_constant = pass.flags_set(pass_flag::evaluate_constant_expression);
+
         switch (a_expression.get_operation()) {
             case separator::space:
                 perform_node_pass(ctx, a_expression.get_operand(0), a_side);
@@ -121,13 +123,20 @@ namespace rebar {
                 break;
             }
             case separator::addition: {
+                object constant_lhs;
+
                 perform_node_pass(ctx, a_expression.get_operand(0), a_side);
+
+                if (evaluate_constant) {
+                    constant_lhs = ctx.constant_side(a_side);
+                }
 
                 bool push_required = true;
 
                 if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
                     perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
-                    //push_required = test_push_require_flags & side_clobber_flag(a_side);
+                    push_required = ctx.out_flags_set(side_clobber_flag(a_side));
                 }
 
                 if (push_required) {
@@ -135,6 +144,10 @@ namespace rebar {
                 }
 
                 perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (evaluate_constant) {
+                    ctx.constant_side(a_side) = object::add(m_environment, constant_lhs, ctx.constant_side(!a_side));
+                }
 
                 if (push_required) {
                     ctx.pop_side(a_side);
@@ -160,16 +173,17 @@ namespace rebar {
                 break;
             }
             case separator::addition_assignment: {
-                REBAR_CC_DEBUG("Addition.");
+                REBAR_CC_DEBUG("Addition assignment.");
 
                 perform_assignable_node_pass(ctx, a_expression.get_operand(0));
 
                 bool push_required = true;
 
-                //if (flags_set(compiler_flag::optimize_bypass_register_save)) {
-                //    auto test_push_required_flags = perform_node_pass(a_ctx, a_expression.get_operand(1), !a_side, a_flags | pass_flag::void_code_generation);
-                //    push_required = test_push_required_flags & pass_flag::clobber_identifier;
-                //}
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(pass_flag::clobber_identifier);
+                }
 
                 if (push_required) {
                     ctx.push_identifier();
@@ -202,45 +216,304 @@ namespace rebar {
 
                 break;
             }
-            case separator::multiplication:
+            case separator::multiplication: {
+                object constant_lhs;
+
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
+
+                if (evaluate_constant) {
+                    constant_lhs = ctx.constant_side(a_side);
+                }
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(side_clobber_flag(a_side));
+                }
+
+                if (push_required) {
+                    ctx.push_side(a_side);
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (evaluate_constant) {
+                    ctx.constant_side(a_side) = object::multiply(m_environment, constant_lhs, ctx.constant_side(!a_side));
+                }
+
+                if (push_required) {
+                    ctx.pop_side(a_side);
+                }
+
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
+
+                pass.set_flags(pass_flag::clobber_return);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* multiply_invoke;
+                    cc.invoke(&multiply_invoke, _ext_object_multiply, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    multiply_invoke->setArg(0, ctx.environment);
+                    multiply_invoke->setArg(1, ctx.return_object);
+                    multiply_invoke->setArg(2, opp_out_type);
+                    multiply_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
+
                 break;
-            case separator::multiplication_assignment:
+            }
+            case separator::multiplication_assignment: {
+                REBAR_CC_DEBUG("Multiplication assignment.");
+
+                perform_assignable_node_pass(ctx, a_expression.get_operand(0));
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(pass_flag::clobber_identifier);
+                }
+
+                if (push_required) {
+                    ctx.push_identifier();
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (push_required) {
+                    ctx.pop_identifier();
+                }
+
+                // TODO: OPTIMIZE: Only call for complex types.
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.identifier));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.return_object), ctx.transfer);
+
+                pass.set_flags(pass_flag::clobber_transfer);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* multiply_invoke;
+                    cc.invoke(&multiply_invoke, _ext_object_multiply, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    multiply_invoke->setArg(0, ctx.environment);
+                    multiply_invoke->setArg(1, ctx.return_object);
+                    multiply_invoke->setArg(2, opp_out_type);
+                    multiply_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.return_object));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.identifier), ctx.transfer);
+
                 break;
-            case separator::division:
+            }
+            case separator::division: {
+                object constant_lhs;
+
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
+
+                if (evaluate_constant) {
+                    constant_lhs = ctx.constant_side(a_side);
+                }
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(side_clobber_flag(a_side));
+                }
+
+                if (push_required) {
+                    ctx.push_side(a_side);
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (evaluate_constant) {
+                    ctx.constant_side(a_side) = object::divide(m_environment, constant_lhs, ctx.constant_side(!a_side));
+                }
+
+                if (push_required) {
+                    ctx.pop_side(a_side);
+                }
+
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
+
+                pass.set_flags(pass_flag::clobber_return);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* divide_invoke;
+                    cc.invoke(&divide_invoke, _ext_object_divide, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    divide_invoke->setArg(0, ctx.environment);
+                    divide_invoke->setArg(1, ctx.return_object);
+                    divide_invoke->setArg(2, opp_out_type);
+                    divide_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
+
                 break;
-            case separator::division_assignment:
+            }
+            case separator::division_assignment: {
+                REBAR_CC_DEBUG("Division assignment.");
+
+                perform_assignable_node_pass(ctx, a_expression.get_operand(0));
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(pass_flag::clobber_identifier);
+                }
+
+                if (push_required) {
+                    ctx.push_identifier();
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (push_required) {
+                    ctx.pop_identifier();
+                }
+
+                // TODO: OPTIMIZE: Only call for complex types.
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.identifier));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.return_object), ctx.transfer);
+
+                pass.set_flags(pass_flag::clobber_transfer);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* divide_invoke;
+                    cc.invoke(&divide_invoke, _ext_object_divide, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    divide_invoke->setArg(0, ctx.environment);
+                    divide_invoke->setArg(1, ctx.return_object);
+                    divide_invoke->setArg(2, opp_out_type);
+                    divide_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.return_object));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.identifier), ctx.transfer);
+
                 break;
-            case separator::subtraction:
+            }
+            case separator::subtraction: {
+                object constant_lhs;
+
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
+
+                if (evaluate_constant) {
+                    constant_lhs = ctx.constant_side(a_side);
+                }
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(side_clobber_flag(a_side));
+                }
+
+                if (push_required) {
+                    ctx.push_side(a_side);
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (evaluate_constant) {
+                    ctx.constant_side(a_side) = object::subtract(m_environment, constant_lhs, ctx.constant_side(!a_side));
+                }
+
+                if (push_required) {
+                    ctx.pop_side(a_side);
+                }
+
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
+
+                pass.set_flags(pass_flag::clobber_return);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* subtract_invoke;
+                    cc.invoke(&subtract_invoke, _ext_object_subtract, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    subtract_invoke->setArg(0, ctx.environment);
+                    subtract_invoke->setArg(1, ctx.return_object);
+                    subtract_invoke->setArg(2, opp_out_type);
+                    subtract_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
+
                 break;
-            case separator::subtraction_assignment:
+            }
+            case separator::subtraction_assignment: {
+                REBAR_CC_DEBUG("Subtraction assignment.");
+
+                perform_assignable_node_pass(ctx, a_expression.get_operand(0));
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(pass_flag::clobber_identifier);
+                }
+
+                if (push_required) {
+                    ctx.push_identifier();
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (push_required) {
+                    ctx.pop_identifier();
+                }
+
+                // TODO: OPTIMIZE: Only call for complex types.
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.identifier));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.return_object), ctx.transfer);
+
+                pass.set_flags(pass_flag::clobber_transfer);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* subtract_invoke;
+                    cc.invoke(&subtract_invoke, _ext_object_subtract, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    subtract_invoke->setArg(0, ctx.environment);
+                    subtract_invoke->setArg(1, ctx.return_object);
+                    subtract_invoke->setArg(2, opp_out_type);
+                    subtract_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.return_object));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.identifier), ctx.transfer);
+
                 break;
+            }
             case separator::increment:
                 break;
             case separator::decrement:
                 break;
-            case separator::group_open:
-                break;
-            case separator::group_close:
-                break;
-            case separator::selector_open:
-                break;
-            case separator::selector_close:
-                break;
-            case separator::scope_open:
-                break;
-            case separator::scope_close:
-                break;
             case separator::equality: {
                 REBAR_CC_DEBUG("Performing operation. (EQUALITY)");
 
+                perform_node_pass(ctx, a_expression.get_operand(0), output_side::lefthand);
+
                 bool push_required = true;
 
-                //if (flags_set(compiler_flag::optimize_bypass_register_save)) {
-                //    auto test_push_required_flags = perform_node_pass(a_ctx, a_expression.get_operand(1), output_side::righthand, a_flags | pass_flag::void_code_generation);
-                //    push_required = test_push_required_flags & pass_flag::clobber_left;
-                //}
-
-                perform_node_pass(ctx, a_expression.get_operand(0), output_side::lefthand);
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), output_side::righthand);
+                    push_required = ctx.out_flags_set(pass_flag::clobber_left);
+                }
 
                 if (push_required) {
                     ctx.push_side(output_side::lefthand);
@@ -310,45 +583,669 @@ namespace rebar {
                 break;
             case separator::logical_not:
                 break;
-            case separator::bitwise_or:
+            case separator::bitwise_or: {
+                object constant_lhs;
+
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
+
+                if (evaluate_constant) {
+                    constant_lhs = ctx.constant_side(a_side);
+                }
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(side_clobber_flag(a_side));
+                }
+
+                if (push_required) {
+                    ctx.push_side(a_side);
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (evaluate_constant) {
+                    ctx.constant_side(a_side) = object::bitwise_or(m_environment, constant_lhs, ctx.constant_side(!a_side));
+                }
+
+                if (push_required) {
+                    ctx.pop_side(a_side);
+                }
+
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
+
+                pass.set_flags(pass_flag::clobber_return);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* bitwise_invoke;
+                    cc.invoke(&bitwise_invoke, _ext_object_bitwise_or, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    bitwise_invoke->setArg(0, ctx.environment);
+                    bitwise_invoke->setArg(1, ctx.return_object);
+                    bitwise_invoke->setArg(2, opp_out_type);
+                    bitwise_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
+
                 break;
-            case separator::bitwise_or_assignment:
+            }
+            case separator::bitwise_or_assignment: {
+                REBAR_CC_DEBUG("Bitwise OR assignment.");
+
+                perform_assignable_node_pass(ctx, a_expression.get_operand(0));
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(pass_flag::clobber_identifier);
+                }
+
+                if (push_required) {
+                    ctx.push_identifier();
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (push_required) {
+                    ctx.pop_identifier();
+                }
+
+                // TODO: OPTIMIZE: Only call for complex types.
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.identifier));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.return_object), ctx.transfer);
+
+                pass.set_flags(pass_flag::clobber_transfer);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* bitwise_invoke;
+                    cc.invoke(&bitwise_invoke, _ext_object_bitwise_or, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    bitwise_invoke->setArg(0, ctx.environment);
+                    bitwise_invoke->setArg(1, ctx.return_object);
+                    bitwise_invoke->setArg(2, opp_out_type);
+                    bitwise_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.return_object));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.identifier), ctx.transfer);
+
                 break;
-            case separator::bitwise_xor:
+            }
+            case separator::bitwise_xor: {
+                object constant_lhs;
+
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
+
+                if (evaluate_constant) {
+                    constant_lhs = ctx.constant_side(a_side);
+                }
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(side_clobber_flag(a_side));
+                }
+
+                if (push_required) {
+                    ctx.push_side(a_side);
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (evaluate_constant) {
+                    ctx.constant_side(a_side) = object::bitwise_xor(m_environment, constant_lhs, ctx.constant_side(!a_side));
+                }
+
+                if (push_required) {
+                    ctx.pop_side(a_side);
+                }
+
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
+
+                pass.set_flags(pass_flag::clobber_return);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* bitwise_invoke;
+                    cc.invoke(&bitwise_invoke, _ext_object_bitwise_xor, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    bitwise_invoke->setArg(0, ctx.environment);
+                    bitwise_invoke->setArg(1, ctx.return_object);
+                    bitwise_invoke->setArg(2, opp_out_type);
+                    bitwise_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
+
                 break;
-            case separator::bitwise_xor_assignment:
+            }
+            case separator::bitwise_xor_assignment: {
+                REBAR_CC_DEBUG("Bitwise XOR assignment.");
+
+                perform_assignable_node_pass(ctx, a_expression.get_operand(0));
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(pass_flag::clobber_identifier);
+                }
+
+                if (push_required) {
+                    ctx.push_identifier();
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (push_required) {
+                    ctx.pop_identifier();
+                }
+
+                // TODO: OPTIMIZE: Only call for complex types.
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.identifier));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.return_object), ctx.transfer);
+
+                pass.set_flags(pass_flag::clobber_transfer);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* bitwise_invoke;
+                    cc.invoke(&bitwise_invoke, _ext_object_bitwise_xor, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    bitwise_invoke->setArg(0, ctx.environment);
+                    bitwise_invoke->setArg(1, ctx.return_object);
+                    bitwise_invoke->setArg(2, opp_out_type);
+                    bitwise_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.return_object));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.identifier), ctx.transfer);
+
                 break;
-            case separator::bitwise_and:
+            }
+            case separator::bitwise_and: {
+                object constant_lhs;
+
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
+
+                if (evaluate_constant) {
+                    constant_lhs = ctx.constant_side(a_side);
+                }
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(side_clobber_flag(a_side));
+                }
+
+                if (push_required) {
+                    ctx.push_side(a_side);
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (evaluate_constant) {
+                    ctx.constant_side(a_side) = object::bitwise_and(m_environment, constant_lhs, ctx.constant_side(!a_side));
+                }
+
+                if (push_required) {
+                    ctx.pop_side(a_side);
+                }
+
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
+
+                pass.set_flags(pass_flag::clobber_return);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* bitwise_invoke;
+                    cc.invoke(&bitwise_invoke, _ext_object_bitwise_and, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    bitwise_invoke->setArg(0, ctx.environment);
+                    bitwise_invoke->setArg(1, ctx.return_object);
+                    bitwise_invoke->setArg(2, opp_out_type);
+                    bitwise_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
+
                 break;
-            case separator::bitwise_and_assignment:
+            }
+            case separator::bitwise_and_assignment: {
+                REBAR_CC_DEBUG("Bitwise AND assignment.");
+
+                perform_assignable_node_pass(ctx, a_expression.get_operand(0));
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(pass_flag::clobber_identifier);
+                }
+
+                if (push_required) {
+                    ctx.push_identifier();
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (push_required) {
+                    ctx.pop_identifier();
+                }
+
+                // TODO: OPTIMIZE: Only call for complex types.
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.identifier));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.return_object), ctx.transfer);
+
+                pass.set_flags(pass_flag::clobber_transfer);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* bitwise_invoke;
+                    cc.invoke(&bitwise_invoke, _ext_object_bitwise_and, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    bitwise_invoke->setArg(0, ctx.environment);
+                    bitwise_invoke->setArg(1, ctx.return_object);
+                    bitwise_invoke->setArg(2, opp_out_type);
+                    bitwise_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.return_object));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.identifier), ctx.transfer);
+
                 break;
+            }
             case separator::bitwise_not:
                 break;
-            case separator::shift_right:
+            case separator::shift_right: {
+                object constant_lhs;
+
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
+
+                if (evaluate_constant) {
+                    constant_lhs = ctx.constant_side(a_side);
+                }
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(side_clobber_flag(a_side));
+                }
+
+                if (push_required) {
+                    ctx.push_side(a_side);
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (evaluate_constant) {
+                    ctx.constant_side(a_side) = object::shift_right(m_environment, constant_lhs, ctx.constant_side(!a_side));
+                }
+
+                if (push_required) {
+                    ctx.pop_side(a_side);
+                }
+
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
+
+                pass.set_flags(pass_flag::clobber_return);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* shift_invoke;
+                    cc.invoke(&shift_invoke, _ext_object_shift_right, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    shift_invoke->setArg(0, ctx.environment);
+                    shift_invoke->setArg(1, ctx.return_object);
+                    shift_invoke->setArg(2, opp_out_type);
+                    shift_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
+
                 break;
-            case separator::shift_right_assignment:
+            }
+            case separator::shift_right_assignment: {
+                REBAR_CC_DEBUG("Shift right assignment.");
+
+                perform_assignable_node_pass(ctx, a_expression.get_operand(0));
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(pass_flag::clobber_identifier);
+                }
+
+                if (push_required) {
+                    ctx.push_identifier();
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (push_required) {
+                    ctx.pop_identifier();
+                }
+
+                // TODO: OPTIMIZE: Only call for complex types.
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.identifier));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.return_object), ctx.transfer);
+
+                pass.set_flags(pass_flag::clobber_transfer);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* shift_invoke;
+                    cc.invoke(&shift_invoke, _ext_object_shift_right, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    shift_invoke->setArg(0, ctx.environment);
+                    shift_invoke->setArg(1, ctx.return_object);
+                    shift_invoke->setArg(2, opp_out_type);
+                    shift_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.return_object));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.identifier), ctx.transfer);
+
                 break;
-            case separator::shift_left:
+            }
+            case separator::shift_left: {
+                object constant_lhs;
+
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
+
+                if (evaluate_constant) {
+                    constant_lhs = ctx.constant_side(a_side);
+                }
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(side_clobber_flag(a_side));
+                }
+
+                if (push_required) {
+                    ctx.push_side(a_side);
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (evaluate_constant) {
+                    ctx.constant_side(a_side) = object::shift_left(m_environment, constant_lhs, ctx.constant_side(!a_side));
+                }
+
+                if (push_required) {
+                    ctx.pop_side(a_side);
+                }
+
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
+
+                pass.set_flags(pass_flag::clobber_return);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* shift_invoke;
+                    cc.invoke(&shift_invoke, _ext_object_shift_left, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    shift_invoke->setArg(0, ctx.environment);
+                    shift_invoke->setArg(1, ctx.return_object);
+                    shift_invoke->setArg(2, opp_out_type);
+                    shift_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
+
                 break;
-            case separator::shift_left_assignment:
+            }
+            case separator::shift_left_assignment: {
+                REBAR_CC_DEBUG("Shift left assignment.");
+
+                perform_assignable_node_pass(ctx, a_expression.get_operand(0));
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(pass_flag::clobber_identifier);
+                }
+
+                if (push_required) {
+                    ctx.push_identifier();
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (push_required) {
+                    ctx.pop_identifier();
+                }
+
+                // TODO: OPTIMIZE: Only call for complex types.
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.identifier));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.return_object), ctx.transfer);
+
+                pass.set_flags(pass_flag::clobber_transfer);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* shift_invoke;
+                    cc.invoke(&shift_invoke, _ext_object_shift_left, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    shift_invoke->setArg(0, ctx.environment);
+                    shift_invoke->setArg(1, ctx.return_object);
+                    shift_invoke->setArg(2, opp_out_type);
+                    shift_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.return_object));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.identifier), ctx.transfer);
+
                 break;
-            case separator::exponent:
+            }
+            case separator::exponent: {
+                object constant_lhs;
+
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
+
+                if (evaluate_constant) {
+                    constant_lhs = ctx.constant_side(a_side);
+                }
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(side_clobber_flag(a_side));
+                }
+
+                if (push_required) {
+                    ctx.push_side(a_side);
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (evaluate_constant) {
+                    ctx.constant_side(a_side) = object::exponentiate(m_environment, constant_lhs, ctx.constant_side(!a_side));
+                }
+
+                if (push_required) {
+                    ctx.pop_side(a_side);
+                }
+
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
+
+                pass.set_flags(pass_flag::clobber_return);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* exponent_invoke;
+                    cc.invoke(&exponent_invoke, _ext_object_exponentiate, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    exponent_invoke->setArg(0, ctx.environment);
+                    exponent_invoke->setArg(1, ctx.return_object);
+                    exponent_invoke->setArg(2, opp_out_type);
+                    exponent_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
+
                 break;
-            case separator::exponent_assignment:
+            }
+            case separator::exponent_assignment: {
+                REBAR_CC_DEBUG("Exponent assignment.");
+
+                perform_assignable_node_pass(ctx, a_expression.get_operand(0));
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(pass_flag::clobber_identifier);
+                }
+
+                if (push_required) {
+                    ctx.push_identifier();
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (push_required) {
+                    ctx.pop_identifier();
+                }
+
+                // TODO: OPTIMIZE: Only call for complex types.
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.identifier));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.return_object), ctx.transfer);
+
+                pass.set_flags(pass_flag::clobber_transfer);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* exponent_invoke;
+                    cc.invoke(&exponent_invoke, _ext_object_exponentiate, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    exponent_invoke->setArg(0, ctx.environment);
+                    exponent_invoke->setArg(1, ctx.return_object);
+                    exponent_invoke->setArg(2, opp_out_type);
+                    exponent_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.return_object));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.identifier), ctx.transfer);
+
                 break;
-            case separator::modulus:
+            }
+            case separator::modulus: {
+                object constant_lhs;
+
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
+
+                if (evaluate_constant) {
+                    constant_lhs = ctx.constant_side(a_side);
+                }
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(side_clobber_flag(a_side));
+                }
+
+                if (push_required) {
+                    ctx.push_side(a_side);
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (evaluate_constant) {
+                    ctx.constant_side(a_side) = object::modulus(m_environment, constant_lhs, ctx.constant_side(!a_side));
+                }
+
+                if (push_required) {
+                    ctx.pop_side(a_side);
+                }
+
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
+
+                pass.set_flags(pass_flag::clobber_return);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* modulus_invoke;
+                    cc.invoke(&modulus_invoke, _ext_object_modulus, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    modulus_invoke->setArg(0, ctx.environment);
+                    modulus_invoke->setArg(1, ctx.return_object);
+                    modulus_invoke->setArg(2, opp_out_type);
+                    modulus_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
+
                 break;
-            case separator::modulus_assignment:
+            }
+            case separator::modulus_assignment: {
+                REBAR_CC_DEBUG("Modulus assignment.");
+
+                perform_assignable_node_pass(ctx, a_expression.get_operand(0));
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+                    push_required = ctx.out_flags_set(pass_flag::clobber_identifier);
+                }
+
+                if (push_required) {
+                    ctx.push_identifier();
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), !a_side);
+
+                if (push_required) {
+                    ctx.pop_identifier();
+                }
+
+                // TODO: OPTIMIZE: Only call for complex types.
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.identifier));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.return_object), ctx.transfer);
+
+                pass.set_flags(pass_flag::clobber_transfer);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* modulus_invoke;
+                    cc.invoke(&modulus_invoke, _ext_object_modulus, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    modulus_invoke->setArg(0, ctx.environment);
+                    modulus_invoke->setArg(1, ctx.return_object);
+                    modulus_invoke->setArg(2, opp_out_type);
+                    modulus_invoke->setArg(3, opp_out_data);
+                })
+
+                cc.movdqa(ctx.transfer, asmjit::x86::dqword_ptr(ctx.return_object));
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.identifier), ctx.transfer);
+
                 break;
-            //case separator::seek:
+            }
             case separator::ternary:
                 break;
-            //case separator::list:
             case separator::length:
-                break;
-            case separator::ellipsis:
-                break;
-            case separator::end_statement:
                 break;
             case separator::new_object: {
                 const auto& callable_node = a_expression.get_operand(0);
