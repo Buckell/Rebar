@@ -29,6 +29,10 @@ namespace rebar {
                 cc.mov(out_type, type::string);
                 cc.movabs(out_data, literal.data());
 
+                if (evaluate_constant) {
+                    constant_assignable = literal;
+                }
+
                 break;
             }
             case token::type::identifier:

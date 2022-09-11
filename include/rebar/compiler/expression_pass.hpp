@@ -35,7 +35,11 @@ namespace rebar {
                 perform_assignable_node_pass(ctx, a_expression.get_operand(0));
                 auto pre_assignable_pass = pass.output_flags();
 
-                /*if (pre_assignable_pass & pass_flag::constant_assignable) {
+                pass.target_flags(pass_flag::void_code_generation | pass_flag::evaluate_constant_expression);
+                perform_node_pass(ctx, a_expression.get_operand(1), a_side);
+                auto pre_value_pass = pass.output_flags();
+
+                if (pre_assignable_pass & pass_flag::constant_assignable) {
                     if (pre_value_pass & pass_flag::dynamic_expression) {
                         // TODO: Throw exception, dynamic expression assigned to constant.
                         m_environment.cout() << "CONSTANT EXCEPTION" << std::endl;

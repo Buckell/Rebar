@@ -365,6 +365,10 @@ namespace rebar {
                 [[nodiscard]] bool flags_set(flags a_flags) noexcept {
                     return ctx.get_input_flags(pass_index) & a_flags;
                 }
+
+                [[nodiscard]] flags output_flags() const noexcept {
+                    return ctx.last_output;
+                }
             };
         };
 
