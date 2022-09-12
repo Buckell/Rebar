@@ -23,6 +23,7 @@ namespace rebar {
         auto& cc = ctx.assembler;
 
         bool evaluate_constant = pass.flags_set(pass_flag::evaluate_constant_expression);
+        auto& const_side = ctx.constant_side(a_side);
 
         switch (a_expression.get_operation()) {
             case separator::space:
@@ -577,12 +578,54 @@ namespace rebar {
                 break;
             case separator::lesser_equality:
                 break;
-            case separator::logical_or:
+            case separator::logical_or: {
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
+
+                const auto& label_end = cc.newLabel();
+
+                cc.cmp(out_data, 0);
+                cc.jne(label_end);
+
+                if (ctx.constant_side(a_side)) {
+                    ctx.unset_target_flags(pass_flag::evaluate_constant_expression);
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), a_side);
+
+                cc.bind(label_end);
+
                 break;
-            case separator::logical_and:
+            }
+            case separator::logical_and: {
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
+
+                const auto& label_end = cc.newLabel();
+
+                cc.cmp(out_data, 0);
+                cc.je(label_end);
+
+                if (!ctx.constant_side(a_side)) {
+                    ctx.unset_target_flags(pass_flag::evaluate_constant_expression);
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), a_side);
+
+                cc.bind(label_end);
+
                 break;
-            case separator::logical_not:
+            }
+            case separator::logical_not: {
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
+
+                if (evaluate_constant) {
+                    const_side = !const_side;
+                }
+
+                cc.mov(out_type, type::boolean);
+                cc.not_(out_data);
+
                 break;
+            }
             case separator::bitwise_or: {
                 object constant_lhs;
 

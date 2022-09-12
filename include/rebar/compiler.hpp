@@ -348,6 +348,11 @@ namespace rebar {
                 next_pass_flags() |= a_flags;
             }
 
+            // Set input flag(s) of next pass.
+            void unset_target_flags(flags a_flags) noexcept {
+                next_pass_flags() &= ~a_flags;
+            }
+
             [[nodiscard]] flags output_flags() const noexcept {
                 return last_output;
             }
