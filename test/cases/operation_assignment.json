@@ -1,0 +1,27 @@
+{
+    "name": "Compound Assignment Operators",
+    "code": [
+        "local number = 4;",
+        "number += 4;",
+        "PrintLn(number);",
+        "number -= 6;",
+        "PrintLn(number);",
+        "number *= 2;",
+        "PrintLn(\"HELLO \" * number);",
+        "number /= 2;",
+        "PrintLn(number);",
+        "number = 20;",
+        "number &= 4;",
+        "PrintLn(number);",
+        "number %= 3;",
+        "PrintLn(number);"
+    ],
+    "output": [
+        "8",
+        "2",
+        "HELLO HELLO HELLO HELLO ",
+        "2.000000",
+        "4",
+        "1"
+    ]
+}
