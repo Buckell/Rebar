@@ -5,8 +5,6 @@
 #ifndef REBAR_META_HPP
 #define REBAR_META_HPP
 
-#include "macro.hpp"
-
 #include "../rebar.hpp"
 
 namespace rebar::library::standard {
@@ -43,8 +41,7 @@ namespace rebar::library::standard {
         }
     };
 
-    const char library_meta[] = "Meta";
-    define_library<library_meta, meta> d_meta;
+    REBAR_DEFINE_LIBRARY("Meta", meta);
 }
 
 #endif //REBAR_META_HPP

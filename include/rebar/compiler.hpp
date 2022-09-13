@@ -34,9 +34,9 @@ namespace rebar {
     };
 
     struct compiler_flag {
-        DEFINE_REBAR_FLAG(none, 0);
-        DEFINE_REBAR_FLAG(optimize_bypass_register_save, 1);
-        DEFINE_REBAR_FLAG(optimize_constant_expressions, 2);
+        REBAR_DEFINE_FLAG(none, 0);
+        REBAR_DEFINE_FLAG(optimize_bypass_register_save, 1);
+        REBAR_DEFINE_FLAG(optimize_constant_expressions, 2);
 
         constexpr static flags default_flags = optimize_bypass_register_save
                                              | optimize_constant_expressions;
@@ -106,29 +106,29 @@ namespace rebar {
         };
 
         struct pass_flag {
-            DEFINE_REBAR_FLAG(none, 0);
+            REBAR_DEFINE_FLAG(none, 0);
 
             // Pass Flags
 
             // Converts identifiers into strings. Useful for indexing operations.
-            DEFINE_REBAR_FLAG(identifier_as_string,         1);
+            REBAR_DEFINE_FLAG(identifier_as_string, 1);
             // Treats an identifier as a local definition. Useful for local function definitions.
-            DEFINE_REBAR_FLAG(local_identifier,             2);
+            REBAR_DEFINE_FLAG(local_identifier, 2);
             // Voids machine code generation. Useful for test/scan passes.
-            DEFINE_REBAR_FLAG(void_code_generation,         3);
+            REBAR_DEFINE_FLAG(void_code_generation, 3);
             // Evaluates expression as constant.
-            DEFINE_REBAR_FLAG(evaluate_constant_expression, 4);
+            REBAR_DEFINE_FLAG(evaluate_constant_expression, 4);
 
             // Return Flags
 
-            DEFINE_REBAR_FLAG(clobber_left,         1);
-            DEFINE_REBAR_FLAG(clobber_right,        2);
-            DEFINE_REBAR_FLAG(clobber_identifier,   3);
-            DEFINE_REBAR_FLAG(clobber_return,       4);
-            DEFINE_REBAR_FLAG(clobber_transfer,     5);
+            REBAR_DEFINE_FLAG(clobber_left, 1);
+            REBAR_DEFINE_FLAG(clobber_right, 2);
+            REBAR_DEFINE_FLAG(clobber_identifier, 3);
+            REBAR_DEFINE_FLAG(clobber_return, 4);
+            REBAR_DEFINE_FLAG(clobber_transfer, 5);
 
-            DEFINE_REBAR_FLAG(dynamic_expression,  10);
-            DEFINE_REBAR_FLAG(constant_assignable, 11);
+            REBAR_DEFINE_FLAG(dynamic_expression, 10);
+            REBAR_DEFINE_FLAG(constant_assignable, 11);
         };
 
         struct function_context {

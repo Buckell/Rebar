@@ -8,7 +8,12 @@
 #include <type_traits>
 #include <string_view>
 
-#define DEFINE_REBAR_FLAG(flag, number) constexpr static size_t flag = (number == 0) ? 0x0 : 0x1 << (number - 1)
+#define REBAR_DEFINE_FLAG(flag, number) constexpr static size_t flag = ((number) == 0) ? 0x0 : 0x1 << ((number) - 1)
+
+#define REBAR_DEFINE_LIBRARY(name, lib) const char lib##_libname[] = name; \
+                                        ::rebar::library::define_library<lib##_libname, lib> rebar_libdef_##lib;
+
+#define REBAR_FUNCTION(name) void name(::rebar::object* ret, ::rebar::environment* env)
 
 namespace rebar {
     using integer = std::conditional_t<sizeof(void*) == 8, int64_t, int32_t>;

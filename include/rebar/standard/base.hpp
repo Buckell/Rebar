@@ -5,8 +5,6 @@
 #ifndef REBAR_BASE_HPP
 #define REBAR_BASE_HPP
 
-#include "macro.hpp"
-
 #include "../rebar.hpp"
 
 namespace rebar::library::standard {
@@ -75,8 +73,7 @@ namespace rebar::library::standard {
         }
     };
 
-    const char library_base[] = "Base";
-    define_library<library_base, base> d_base;
+    REBAR_DEFINE_LIBRARY("Base", base);
 }
 
 #endif //REBAR_BASE_HPP

@@ -7,8 +7,6 @@
 
 #include <algorithm>
 
-#include "macro.hpp"
-
 #include "../rebar.hpp"
 
 namespace rebar::library::standard {
@@ -181,8 +179,7 @@ namespace rebar::library::standard {
         }
     };
 
-    const char library_string_base[] = "StringBase";
-    define_library<library_string_base, string_base> d_string_base;
+    REBAR_DEFINE_LIBRARY("StringBase", string_base);
 }
 
 #endif //REBAR_STRING_BASE_HPP

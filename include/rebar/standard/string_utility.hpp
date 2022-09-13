@@ -63,8 +63,7 @@ namespace rebar::library::standard {
         }
     };
 
-    const char library_string_utility[] = "StringUtility";
-    define_library<library_string_utility, string_utility> d_string_utility;
+    REBAR_DEFINE_LIBRARY("StringUtility", string_utility);
 }
 
 #endif //REBAR_STRING_UTILITY_HPP
