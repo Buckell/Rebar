@@ -186,8 +186,8 @@ namespace rebar {
             return *reinterpret_cast<const number*>(&m_data);
         }
 
-        [[nodiscard]] string get_string() const noexcept {
-            return string(reinterpret_cast<void*>(m_data));
+        [[nodiscard]] string& get_string() const noexcept {
+            return *reinterpret_cast<string*>(&m_data);
         }
 
         [[nodiscard]] table& get_table() const noexcept {
