@@ -1,0 +1,40 @@
+{
+    "name": "String Base Library",
+    "code": [
+        "local str1 = \"Hello, world!\";",
+        "PrintLn(str1.Contains(\"Hello\"), str1.Contains(\"Goodbye\"));",
+        "PrintLn(str1.EndsWith(\"world!\"), str1.EndsWith(\"Hello\"));",
+        "PrintLn(str1.EqualsIgnoreCase(\"HeLlO, wORld!\"));",
+        "local str2 = \"Goodbye, world!\";",
+        "PrintLn(str1.IndexOf(\"world\"), str2.IndexOf(\"bye\"));",
+        "PrintLn(str1.IsEmpty(), str2.IsEmpty(), \"\".IsEmpty());",
+        "PrintLn(str2.IndexOf(\"o\"), str2.LastIndexOf(\"oo\"));",
+        "PrintLn(str1.Length());",
+        "local str3 = \"   hello goodbye   world  \";",
+        "PrintLn(str3.Split(\" \"));",
+        "PrintLn(str1.StartsWith(\"Hello\"), str1.StartsWith(\"Goodbye\"));",
+        "PrintLn(\"abc\".ToCharArray());",
+        "PrintLn(\"HelLo, tHeRE!\".ToLowerCase());",
+        "PrintLn(\"HelLo, tHeRE!\".ToUpperCase());",
+        "PrintLn(str3.Trim());",
+        "PrintLn(str3.TrimLeft());",
+        "PrintLn(str3.TrimRight());"
+    ],
+    "output": [
+        "true false",
+        "true false",
+        "true",
+        "7 4",
+        "false false true",
+        "1 1",
+        "13",
+        "[ hello, goodbye, world ]",
+        "true false",
+        "[ 97, 98, 99 ]",
+        "hello, there!",
+        "HELLO, THERE!",
+        "hello goodbye   world",
+        "hello goodbye   world  ",
+        "   hello goodbye   world"
+    ]
+}
