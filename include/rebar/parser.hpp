@@ -942,6 +942,38 @@ namespace rebar {
 
                 return ast;
             }
+        } else if (a_nodes[0].is_token()) {
+            const auto& tok = a_nodes[0].get_token();
+
+            if (tok == separator::new_object) {
+                const auto& last_node = *(a_nodes.end() - 1);
+
+                if (last_node.is_group() || last_node.is_argument_list()) {
+                    node::abstract_syntax_tree ast{ separator::new_object };
+
+                    span<node> lhs_nodes(a_nodes.begin() + 1, a_nodes.end() - 1);
+                    node lhs = (lhs_nodes.size() == 1) ? lhs_nodes[0] : node {
+                        span<token>(lhs_nodes.begin()->m_origin_tokens.begin(), (lhs_nodes.end() - 1)->m_origin_tokens.end()),
+                        span<source_position>(lhs_nodes.begin()->m_origin_source_positions.begin(), (lhs_nodes.end() - 1)->m_origin_source_positions.end()),
+                        node::type::expression,
+                        parse_ast(lhs_nodes)
+                    };
+
+                    ast.add_operand(lhs);
+
+                    if (last_node.is_group() && !last_node.get_expression().empty()) {
+                        ast.add_operand(last_node);
+                    } else if (last_node.is_argument_list()) {
+                        const auto& arg_list = last_node.get_argument_list();
+
+                        for (const auto& arg : arg_list) {
+                            ast.add_operand(arg);
+                        }
+                    }
+
+                    return ast;
+                }
+            }
         }
 
         const auto end = a_nodes.cend();
