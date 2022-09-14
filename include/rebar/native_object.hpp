@@ -75,6 +75,7 @@ namespace rebar {
         static native_object create(virtual_table& a_v_table, t_object a_object) {
             destructor_function destructor = nullptr;
 
+            // TODO: Emits error on undeclared identifier 't_object' in lambda.
             if constexpr (!std::is_trivially_destructible_v<t_object>) {
                 destructor = [](void* a_obj) noexcept(std::is_nothrow_destructible_v<t_object>) {
                     reinterpret_cast<t_object*>(a_obj)->~t_object();
