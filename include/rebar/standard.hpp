@@ -8,6 +8,7 @@
 #include "standard/array_base.hpp"
 #include "standard/base.hpp"
 #include "standard/meta.hpp"
+#include "standard/regex.hpp"
 #include "standard/string_base.hpp"
 #include "standard/string_utility.hpp"
 
