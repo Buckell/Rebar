@@ -15,6 +15,9 @@
 
 #define REBAR_FUNCTION(name) void name(::rebar::object* ret, ::rebar::environment* env)
 
+#define REBAR_RETURN(value) *ret = (value); \
+                            return;
+
 namespace rebar {
     using integer = std::conditional_t<sizeof(void*) == 8, int64_t, int32_t>;
     using number = std::conditional_t<sizeof(void*) == 8, double, float>;
