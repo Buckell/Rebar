@@ -138,7 +138,7 @@ namespace rebar::library::standard {
                 } else {
                     compare_index = 0;
 
-                    if (i < (self_size - compare_size)) {
+                    if (i < compare_size) {
                         REBAR_RETURN(null);
                     }
                 }
