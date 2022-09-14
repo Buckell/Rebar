@@ -695,11 +695,8 @@ namespace rebar {
             case type::string:
                 if (rhs.is_integer()) {
                     return static_cast<integer>(get_string().c_str()[static_cast<size_t>(rhs.get_integer())]);
-                } else if (rhs.is_string()) {
-                    return a_environment.get_string_virtual_table().index(rhs);
                 } else {
-                    // TODO: Throw invalid operand exception.
-                    return null;
+                    return a_environment.get_string_virtual_table().index(rhs);
                 }
             case type::table:
                 return get_table().index(rhs);
@@ -707,8 +704,7 @@ namespace rebar {
                 if (rhs.is_integer()) {
                     return get_array()[static_cast<size_t>(rhs.get_integer())];
                 } else {
-                    // TODO: Throw invalid operand exception.
-                    return null;
+                    return a_environment.get_array_virtual_table().index(rhs);
                 }
             case type::native_object: {
                 object obj = get_native_object().overload_select(a_environment, rhs);

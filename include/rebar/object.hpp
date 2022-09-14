@@ -294,6 +294,10 @@ namespace rebar {
         // TODO: Implement lesser-than-equal-to operations for remaining types.
         static object lesser_than_equal_to(environment& a_environment, object lhs, const object rhs);
 
+        [[nodiscard]] static object from_bool(bool a_boolean) noexcept {
+            return { type::boolean, a_boolean };
+        }
+
         friend std::ostream& operator << (std::ostream& lhs, object rhs) noexcept {
             lhs << rhs.to_string();
             return lhs;

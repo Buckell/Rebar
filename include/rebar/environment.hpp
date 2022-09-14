@@ -68,6 +68,7 @@ namespace rebar {
 
         table m_global_table;
         table m_string_virtual_table;
+        table m_array_virtual_table;
 
         std::istream* m_stream_in = &std::cin;
         std::ostream* m_stream_out = &std::cout;
@@ -97,8 +98,12 @@ namespace rebar {
             return found->second;
         }
 
-        [[nodiscard]] table& get_string_virtual_table() noexcept {
+        [[nodiscard]] inline table& get_string_virtual_table() noexcept {
             return m_string_virtual_table;
+        }
+
+        [[nodiscard]] inline table& get_array_virtual_table() noexcept {
+            return m_array_virtual_table;
         }
 
         virtual_table& register_native_class(const object a_identifier, virtual_table a_table = {}) {
