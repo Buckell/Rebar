@@ -168,6 +168,19 @@ namespace rebar {
         }
     };
 
+    using escape_map = std::map<std::string_view, char>;
+
+    [[nodiscard]] escape_map default_escape_map() noexcept {
+        return {{
+            { "\\", '\\' },
+            { "n", '\n' },
+            { "t", '\t' },
+            { "b", '\b' },
+            { "r", '\r' },
+            { "0", '\0' },
+        }};
+    }
+
     class source_position {
         size_t m_index;
         size_t m_size;
@@ -200,6 +213,7 @@ namespace rebar {
     class lex_unit {
         std::vector<token> m_tokens;
         std::vector<source_position> m_source_positions;
+        std::vector<std::string> m_string_literals;
 
     public:
         template <typename... t_args>
@@ -229,14 +243,18 @@ namespace rebar {
         [[nodiscard]] std::vector<source_position>& source_positions() noexcept {
             return m_source_positions;
         }
+
+        [[nodiscard]] std::string_view store_string_literal(std::string a_string) noexcept {
+            return m_string_literals.emplace_back(std::move(a_string));
+        }
     };
 
     class lexer {
         symbol_map m_map;
+        escape_map m_escape;
 
     public:
-        lexer() noexcept : m_map(symbol_map::get_default()) {}
-        explicit lexer(symbol_map a_map) noexcept : m_map(std::move(a_map)) {}
+        lexer(symbol_map a_map = symbol_map::get_default(), escape_map a_escape = default_escape_map()) noexcept : m_map(std::move(a_map)), m_escape(std::move(a_escape)) {}
 
         [[maybe_unused]] void set_symbol_map(symbol_map a_map) noexcept {
             m_map = std::move(a_map);
@@ -258,6 +276,11 @@ namespace rebar {
             bool block_comment_mode = false;
 
             size_t string_start_index = 0;
+
+            // Temporary buffer to store string literals in the event that the size
+            // must change due to escape sequences or other string replacements.
+            std::string string_literal_buffer;
+
             size_t identifier_start_index = 0;
 
             // Scan through each character.
@@ -284,15 +307,40 @@ namespace rebar {
                     // Actively parsing a string. Handle escape characters, etc.
 
                     if (escape_mode) {
+                        // Check through all registered escape sequences and replace if available.
+                        for (auto& entry : m_escape) {
+                            if (a_string.substr(scan_index, entry.first.size()) == entry.first) {
+                                string_literal_buffer += entry.second;
+                            }
+                        }
+
+                        // TODO: Hex/binary/variable escape sequences.
+
                         escape_mode = false;
                     } else if (character == '"') {
                         string_mode = false;
 
                         std::string_view str = a_string.substr(string_start_index, scan_index - string_start_index);
+
+                        // If generated buffer is larger than original string, due to escape
+                        // sequences and other replacements, store it and replace the string view.
+                        if (!string_literal_buffer.empty()) {
+                            // Add trailing string to buffer.
+                            string_literal_buffer += str;
+
+                            // Efficient swap-move idiom.
+                            std::string out_buffer;
+                            out_buffer.swap(string_literal_buffer);
+                            str = unit.store_string_literal(std::move(out_buffer));
+                        }
+
                         unit.add_token({ scan_index - str.size() - 1, str.size() + 2 }, token::type::string_literal, std::in_place_type<std::string>, str);
+                    } else if (character == '\\') {
+                        string_literal_buffer += a_string.substr(string_start_index, scan_index - string_start_index);
+                        string_start_index = scan_index + 2;
+                        escape_mode = true;
                     }
 
-                    escape_mode = character == '\\';
                     ++scan_index;
                 } else if (scan_index + 1 < a_string.size() && character == '/' && (a_string[scan_index + 1] == '/' || a_string[scan_index + 1] == '*')) {
                     if (a_string[scan_index + 1] == '/') {
