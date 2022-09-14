@@ -5,12 +5,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # SETTINGS
 set(ASMJIT_DIRECTORY "${CMAKE_SOURCE_DIR}/asmjit")
+set(RE2_DIRECTORY "${CMAKE_SOURCE_DIR}/re2")
+
 set(PLATFORM "WINDOWS")
 set(PROFILE "DEBUG")
 
 include_directories(
     ${CMAKE_SOURCE_DIR}/include
     ${ASMJIT_DIRECTORY}/src
+    ${RE2_DIRECTORY}/src
+    ${RE2_DIRECTORY}/src/re2/fuzzing/compiler-rt/include
 )
 
 project(rebar)
@@ -30,8 +34,9 @@ if ("${PROFILE}" STREQUAL "DEBUG")
 endif()
 
 file(GLOB_RECURSE ASMJIT_SOURCE_FILES "${ASMJIT_DIRECTORY}/src/*.cpp" "${ASMJIT_DIRECTORY}/src/*.c")
+file(GLOB_RECURSE RE2_SOURCE_FILES "${RE2_DIRECTORY}/src/*.cc")
 
-add_executable(test64 ${CMAKE_SOURCE_DIR}/test/main.cpp ${ASMJIT_SOURCE_FILES})
+add_executable(test64 ${CMAKE_SOURCE_DIR}/test/main.cpp ${ASMJIT_SOURCE_FILES} ${RE2_SOURCE_FILES})
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GCC" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     add_definitions(-pthread -Wall -Wextra -Wconversion -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wcast-qual -Wunused -Woverloaded-virtual -Wno-noexcept-type -Wpedantic -fsanitize=address -fsanitize=undefined -msse2 -m64 -g)

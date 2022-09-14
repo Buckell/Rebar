@@ -7,6 +7,8 @@
 
 #include <algorithm>
 
+#include "re2/re2.h"
+
 #include "../rebar.hpp"
 
 namespace rebar::library::standard {
@@ -152,8 +154,10 @@ namespace rebar::library::standard {
         }
 
         static REBAR_FUNCTION(Matches) {
-            // TODO: Implement REGEX.
-            REBAR_RETURN(null);
+            std::string_view self = env->arg(0).get_string().to_string_view();
+            std::string_view regex = env->arg(1).get_string().to_string_view();
+
+            REBAR_RETURN(object::from_bool(RE2::FullMatch(self, regex)));
         }
 
         static REBAR_FUNCTION(Replace) {
