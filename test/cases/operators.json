@@ -15,7 +15,10 @@
         "PrintLn(8 ^ 2);",
         "PrintLn(10 >| 2);",
         "PrintLn(13 % 5);",
-        "PrintLn(true ? 10 : 20, false ? 10 : 20);"
+        "PrintLn(true ? 10 : 20, false ? 10 : 20);",
+        "PrintLn(#\"Hello, world!\");",
+        "local arr = [ 10, 20, 30 ];",
+        "PrintLn(#arr);"
     ],
     "output": [
         "Index & Assignment: null 10 10",
@@ -27,6 +30,8 @@
         "64.000000",
         "8",
         "3",
-        "10 20"
+        "10 20",
+        "13",
+        "3"
     ]
 }
