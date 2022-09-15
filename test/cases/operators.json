@@ -21,7 +21,8 @@
         "PrintLn(#arr);",
         "local num = 4;",
         "PrintLn(num, ++num, num++, num);",
-        "PrintLn(num, --num, num--, num);"
+        "PrintLn(num, --num, num--, num);",
+        "PrintLn(~num);"
     ],
     "output": [
         "Index & Assignment: null 10 10",
@@ -37,6 +38,7 @@
         "13",
         "3",
         "4 5 5 6",
-        "6 5 5 4"
+        "6 5 5 4",
+        "-5"
     ]
 }
