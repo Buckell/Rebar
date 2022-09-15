@@ -18,7 +18,10 @@
         "PrintLn(true ? 10 : 20, false ? 10 : 20);",
         "PrintLn(#\"Hello, world!\");",
         "local arr = [ 10, 20, 30 ];",
-        "PrintLn(#arr);"
+        "PrintLn(#arr);",
+        "local num = 4;",
+        "PrintLn(num, ++num, num++, num);",
+        "PrintLn(num, --num, num--, num);"
     ],
     "output": [
         "Index & Assignment: null 10 10",
@@ -32,6 +35,8 @@
         "3",
         "10 20",
         "13",
-        "3"
+        "3",
+        "4 5 5 6",
+        "6 5 5 4"
     ]
 }
