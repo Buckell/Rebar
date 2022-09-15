@@ -499,10 +499,6 @@ namespace rebar {
 
                 break;
             }
-            case separator::increment:
-                break;
-            case separator::decrement:
-                break;
             case separator::equality: {
                 REBAR_CC_DEBUG("Performing operation. (EQUALITY)");
 
@@ -909,6 +905,21 @@ namespace rebar {
                 break;
             }
             case separator::bitwise_not:
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
+
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* invoke;
+                    cc.invoke(&invoke, _ext_object_bitwise_not, asmjit::FuncSignatureT<void, environment*, object*>(platform_call_convention));
+                    invoke->setArg(0, ctx.environment);
+                    invoke->setArg(1, ctx.return_object);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
+
                 break;
             case separator::shift_right: {
                 object constant_lhs;

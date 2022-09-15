@@ -46,6 +46,10 @@ namespace rebar {
         *a_lhs_return = object::bitwise_and(*a_env, *a_lhs_return, { a_rhs_type, a_rhs_data });
     }
 
+    void _ext_object_bitwise_not(environment* a_env, object* a_lhs_return) {
+        *a_lhs_return = object::bitwise_not(*a_env, *a_lhs_return);
+    }
+
     void _ext_object_shift_right(environment* a_env, object* a_lhs_return, type a_rhs_type, size_t a_rhs_data) {
         *a_lhs_return = object::shift_right(*a_env, *a_lhs_return, { a_rhs_type, a_rhs_data });
     }
