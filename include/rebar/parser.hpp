@@ -899,7 +899,7 @@ namespace rebar {
                             break;
                     }
                 }
-            } else if (a_nodes[1].is_group()) {
+            } else if (a_nodes[1].is_group() && (!a_nodes[0].is_token() || !a_nodes[0].get_token().is_separator())) {
                 if (a_nodes[1].get_expression().empty()) {
                     node::abstract_syntax_tree ast{ separator::operation_call };
                     ast.add_operand(a_nodes[0]);
