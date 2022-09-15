@@ -667,6 +667,116 @@ namespace rebar {
         }
     }
 
+    object& object::prefix_increment(environment& a_environment) {
+        switch (m_type) {
+            case type::null:
+                break;
+            case type::boolean:
+            case type::integer: {
+                integer result = get_integer() + 1;
+                m_data = *reinterpret_cast<size_t*>(&result);
+                break;
+            }
+            case type::function:
+                break;
+            case type::number: {
+                number result = get_number() + 1;
+                m_data = *reinterpret_cast<size_t*>(&result);
+                break;
+            }
+            case type::string:
+            case type::table:
+            case type::array:
+                break;
+            case type::native_object:
+                get_native_object().overload_prefix_increment(a_environment);
+                break;
+        }
+
+        return *this;
+    }
+
+    object& object::prefix_decrement(environment& a_environment) {
+        switch (m_type) {
+            case type::null:
+                break;
+            case type::boolean:
+            case type::integer: {
+                integer result = get_integer() - 1;
+                m_data = *reinterpret_cast<size_t*>(&result);
+                break;
+            }
+            case type::function:
+                break;
+            case type::number: {
+                number result = get_number() - 1;
+                m_data = *reinterpret_cast<size_t*>(&result);
+                break;
+            }
+            case type::string:
+            case type::table:
+            case type::array:
+                break;
+            case type::native_object:
+                get_native_object().overload_prefix_decrement(a_environment);
+                break;
+        }
+
+        return *this;
+    }
+
+    object object::postfix_increment(environment& a_environment) {
+        switch (m_type) {
+            case type::null:
+                return null;
+            case type::boolean:
+            case type::integer: {
+                integer result = get_integer() + 1;
+                m_data = *reinterpret_cast<size_t*>(&result);
+                return result - 1;
+            }
+            case type::function:
+                return null;
+            case type::number: {
+                number result = get_number() + 1;
+                m_data = *reinterpret_cast<size_t*>(&result);
+                return result - 1;
+            }
+            case type::string:
+            case type::table:
+            case type::array:
+                return null;
+            case type::native_object:
+                return get_native_object().overload_postfix_increment(a_environment);
+        }
+    }
+
+    object object::postfix_decrement(environment& a_environment) {
+        switch (m_type) {
+            case type::null:
+                return null;
+            case type::boolean:
+            case type::integer: {
+                integer result = get_integer() - 1;
+                m_data = *reinterpret_cast<size_t*>(&result);
+                return result + 1;
+            }
+            case type::function:
+                return null;
+            case type::number: {
+                number result = get_number() - 1;
+                m_data = *reinterpret_cast<size_t*>(&result);
+                return result + 1;
+            }
+            case type::string:
+            case type::table:
+            case type::array:
+                return null;
+            case type::native_object:
+                return get_native_object().overload_postfix_decrement(a_environment);
+        }
+    }
+
     object& object::index(environment& a_environment, const object& rhs) {
         switch (m_type) {
             case type::null:

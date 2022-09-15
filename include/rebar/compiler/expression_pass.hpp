@@ -1500,12 +1500,68 @@ namespace rebar {
                     break;
                 }
             case separator::operation_prefix_increment:
+                perform_assignable_node_pass(ctx, a_expression.get_operand(0));
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* invoke;
+                    cc.invoke(&invoke, _ext_object_prefix_increment, asmjit::FuncSignatureT<void, environment*, object*>(platform_call_convention));
+                    invoke->setArg(0, ctx.environment);
+                    invoke->setArg(1, ctx.identifier);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.identifier));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.identifier, object_data_offset));
+
                 break;
             case separator::operation_postfix_increment:
+                perform_assignable_node_pass(ctx, a_expression.get_operand(0));
+
+                cc.pxor(ctx.transfer, ctx.transfer);
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.return_object), ctx.transfer);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* invoke;
+                    cc.invoke(&invoke, _ext_object_postfix_increment, asmjit::FuncSignatureT<void, environment*, object*, object*>(platform_call_convention));
+                    invoke->setArg(0, ctx.environment);
+                    invoke->setArg(1, ctx.return_object);
+                    invoke->setArg(2, ctx.identifier);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
+
                 break;
             case separator::operation_prefix_decrement:
+                perform_assignable_node_pass(ctx, a_expression.get_operand(0));
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* invoke;
+                    cc.invoke(&invoke, _ext_object_prefix_decrement, asmjit::FuncSignatureT<void, environment*, object*>(platform_call_convention));
+                    invoke->setArg(0, ctx.environment);
+                    invoke->setArg(1, ctx.identifier);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.identifier));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.identifier, object_data_offset));
+
                 break;
             case separator::operation_postfix_decrement:
+                perform_assignable_node_pass(ctx, a_expression.get_operand(0));
+
+                cc.pxor(ctx.transfer, ctx.transfer);
+                cc.movdqa(asmjit::x86::dqword_ptr(ctx.return_object), ctx.transfer);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* invoke;
+                    cc.invoke(&invoke, _ext_object_postfix_decrement, asmjit::FuncSignatureT<void, environment*, object*, object*>(platform_call_convention));
+                    invoke->setArg(0, ctx.environment);
+                    invoke->setArg(1, ctx.return_object);
+                    invoke->setArg(2, ctx.identifier);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
+
                 break;
             case separator::operation_call: {
                 const auto& callable_node = a_expression.get_operand(0);

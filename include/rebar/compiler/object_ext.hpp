@@ -65,6 +65,22 @@ namespace rebar {
     void _ext_object_length(environment* a_env, object* a_lhs_return) {
         *a_lhs_return = a_lhs_return->length(*a_env);
     }
+
+    void _ext_object_prefix_increment(environment* a_env, object* a_lhs) {
+        a_lhs->prefix_increment(*a_env);
+    }
+
+    void _ext_object_prefix_decrement(environment* a_env, object* a_lhs) {
+        a_lhs->prefix_decrement(*a_env);
+    }
+
+    void _ext_object_postfix_increment(environment* a_env, object* a_return, object* a_lhs) {
+        *a_return = a_lhs->postfix_increment(*a_env);
+    }
+
+    void _ext_object_postfix_decrement(environment* a_env, object* a_return, object* a_lhs) {
+        *a_return = a_lhs->postfix_decrement(*a_env);
+    }
 }
 
 #endif //REBAR_OBJECT_EXT_HPP

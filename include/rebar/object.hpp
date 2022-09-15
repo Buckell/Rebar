@@ -294,6 +294,18 @@ namespace rebar {
         // TODO: Implement lesser-than-equal-to operations for remaining types.
         static object lesser_than_equal_to(environment& a_environment, object lhs, const object rhs);
 
+        // TODO: Implement prefix-increment operations for remaining types.
+        object& prefix_increment(environment& a_environment);
+
+        // TODO: Implement prefix-decrement operations for remaining types.
+        object& prefix_decrement(environment& a_environment);
+
+        // TODO: Implement postfix-increment operations for remaining types.
+        object postfix_increment(environment& a_environment);
+
+        // TODO: Implement postfix-decrement operations for remaining types.
+        object postfix_decrement(environment& a_environment);
+
         [[nodiscard]] static object from_bool(bool a_boolean) noexcept {
             return { type::boolean, a_boolean };
         }
