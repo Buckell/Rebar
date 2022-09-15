@@ -1286,8 +1286,27 @@ namespace rebar {
 
                 break;
             }
-            case separator::ternary:
+            case separator::ternary: {
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
+
+                const auto& label_second = cc.newLabel();
+                const auto& label_end = cc.newLabel();
+
+                cc.cmp(out_data, 0);
+                cc.je(label_second);
+
+                perform_node_pass(ctx, a_expression.get_operand(1), a_side);
+
+                cc.jmp(label_end);
+
+                cc.bind(label_second);
+
+                perform_node_pass(ctx, a_expression.get_operand(2), a_side);
+
+                cc.bind(label_end);
+
                 break;
+            }
             case separator::length:
                 break;
             case separator::new_object: {

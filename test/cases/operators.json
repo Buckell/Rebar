@@ -14,7 +14,8 @@
         "PrintLn(32 & 4);",
         "PrintLn(8 ^ 2);",
         "PrintLn(10 >| 2);",
-        "PrintLn(13 % 5);"
+        "PrintLn(13 % 5);",
+        "PrintLn(true ? 10 : 20, false ? 10 : 20);"
     ],
     "output": [
         "Index & Assignment: null 10 10",
@@ -25,6 +26,7 @@
         "0",
         "64.000000",
         "8",
-        "3"
+        "3",
+        "10 20"
     ]
 }
