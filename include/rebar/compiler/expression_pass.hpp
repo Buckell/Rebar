@@ -1308,6 +1308,21 @@ namespace rebar {
                 break;
             }
             case separator::length:
+                perform_node_pass(ctx, a_expression.get_operand(0), a_side);
+
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* length_invoke;
+                    cc.invoke(&length_invoke, _ext_object_length, asmjit::FuncSignatureT<void, environment*, object*>(platform_call_convention));
+                    length_invoke->setArg(0, ctx.environment);
+                    length_invoke->setArg(1, ctx.return_object);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
+
                 break;
             case separator::new_object: {
                 const auto& callable_node = a_expression.get_operand(0);

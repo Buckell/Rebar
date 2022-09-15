@@ -61,6 +61,10 @@ namespace rebar {
     void _ext_object_modulus(environment* a_env, object* a_lhs_return, type a_rhs_type, size_t a_rhs_data) {
         *a_lhs_return = object::modulus(*a_env, *a_lhs_return, {a_rhs_type, a_rhs_data});
     }
+
+    void _ext_object_length(environment* a_env, object* a_lhs_return) {
+        *a_lhs_return = a_lhs_return->length(*a_env);
+    }
 }
 
 #endif //REBAR_OBJECT_EXT_HPP
