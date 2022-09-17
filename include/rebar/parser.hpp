@@ -1147,7 +1147,11 @@ namespace rebar {
                         return find_next_exclude::close;
                     }
                 }
+
+                return find_next_exclude::none;
             });
+
+            // TODO: Check ternary_break_find != cend().
 
             span<node> ternary_lhs_nodes(min_separator_it + 1, ternary_break_find);
             span<node> ternary_rhs_nodes(ternary_break_find + 1, rhs_nodes.end());
