@@ -152,9 +152,9 @@ namespace rebar {
 
         [[nodiscard]] inline std::vector<object>::const_iterator cend() const noexcept;
 
-        [[nodiscard]] object& operator [] (const size_t index) noexcept;
+        [[nodiscard]] object& operator [] (size_t index) noexcept;
 
-        void push_back(const rebar::object a_object) noexcept;
+        void push_back(rebar::object a_object) noexcept;
 
         [[nodiscard]] array sub_array(const size_t a_offset, const size_t a_length) {
             // TODO: Bounds checking.
@@ -165,6 +165,8 @@ namespace rebar {
                 case type::view:
                     return { view_array(), view_offset() + a_offset, a_length };
             }
+
+            return {};
         }
 
         [[nodiscard]] std::string to_string() noexcept;
