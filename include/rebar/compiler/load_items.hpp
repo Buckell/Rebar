@@ -238,6 +238,7 @@ namespace rebar {
                 cc.lea(ctx.identifier, parameter_space);
 
                 pass.set_flags(pass_flag::clobber_identifier | pass_flag::dynamic_expression);
+                return;
             }
         }
 
