@@ -79,9 +79,7 @@ namespace rebar {
 
         for (; it != end_it; ++it) {
             if constexpr (using_search_function) {
-                const std::function<bool (const typename t_container::value_type&)> search_function = a_search;
-
-                if (search_function(*it) && exclude_increment == 0) {
+                if (a_search(*it) && exclude_increment == 0) {
                     return it;
                 }
             } else {
@@ -94,9 +92,7 @@ namespace rebar {
                 exclude_increment += *it == a_open_exclude;
                 exclude_increment -= *it == a_close_exclude;
             } else if constexpr (using_exclude_function) {
-                const std::function<find_next_exclude (const typename t_container::value_type&)> exclude_function = a_open_exclude;
-
-                switch (exclude_function(*it)) {
+                switch (a_open_exclude(*it)) {
                     case find_next_exclude::open:
                         exclude_increment++;
                         break;
