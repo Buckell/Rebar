@@ -1786,8 +1786,8 @@ namespace rebar {
                         if (flag_local) {
                             auto& local_table = ctx.local_variable_list.back();
 
-                            if (local_table.find(tok.get_identifier()) == local_table.cend()) {
-                                ctx.local_variable_list.back().emplace(tok.get_identifier(), ctx.local_stack_position);
+                            if (!pass.flags_set(pass_flag::void_code_generation) && local_table.find(tok.get_identifier()) == local_table.cend()) {
+                                local_table.emplace(tok.get_identifier(), ctx.local_stack_position);
 
                                 REBAR_CC_DEBUG("Initialize local to null. (%s)", tok.get_identifier().data());
 
@@ -1808,9 +1808,10 @@ namespace rebar {
 
                         load_identifier_pointer(ctx, tok.get_identifier());
                     }
+                } else {
+                    perform_assignable_node_pass(ctx, assignee_op);
                 }
 
-                perform_assignable_node_pass(ctx, assignee_op);
                 break;
             }
             case separator::addition_assignment: {
