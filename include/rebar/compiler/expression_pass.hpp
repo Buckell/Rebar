@@ -524,6 +524,7 @@ namespace rebar {
 
                 const auto& label_end = cc.newLabel();
                 const auto& label_bad_compare = cc.newLabel();
+                const auto& label_good_compare = cc.newLabel();
                 const auto& label_complex_compare = cc.newLabel();
 
                 REBAR_CC_DEBUG("Comparing types.");
@@ -539,24 +540,45 @@ namespace rebar {
                 REBAR_CC_DEBUG("Simple comparison.");
 
                 cc.cmp(ctx.lhs_data, ctx.rhs_data);
-                cc.jne(label_bad_compare);
-
-                cc.mov(out_type, type::boolean);
-                cc.mov(out_data, true);
-                cc.jmp(label_end);
+                cc.je(label_good_compare);
+                cc.jmp(label_bad_compare);
 
                 REBAR_CC_DEBUG("Complex comparison.");
 
                 cc.bind(label_complex_compare);
 
-                // TODO: Implement complex compare.
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), ctx.lhs_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), ctx.lhs_data);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* invoke;
+                    cc.invoke(&invoke, _ext_object_equals, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    invoke->setArg(0, ctx.environment);
+                    invoke->setArg(1, ctx.return_object);
+                    invoke->setArg(2, ctx.rhs_type);
+                    invoke->setArg(3, ctx.rhs_data);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
+
+                cc.jmp(label_end);
+
+                REBAR_CC_DEBUG("Good comparison.");
+
+                cc.bind(label_good_compare);
+
+                cc.mov(out_type, type::boolean);
+                cc.mov(out_data, true);
+
+                cc.jmp(label_end);
 
                 REBAR_CC_DEBUG("Bad comparison.");
 
                 cc.bind(label_bad_compare);
 
                 cc.mov(out_type, type::boolean);
-                cc.mov(out_data, false);
+                cc.xor_(out_data, out_data);
 
                 cc.bind(label_end);
 
