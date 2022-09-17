@@ -50,7 +50,51 @@ namespace rebar {
                         *ctx.constant_identifier = ctx.constant_side(a_side);
                     }
                 } else {
+                    ctx.target_flags(pass_flag::check_local_definition);
+                    perform_assignable_node_pass(ctx, a_expression.get_operand(0));
+                    bool dereference_required = !ctx.out_flags_set(pass_flag::local_definition);
+                    ctx.unset_out_flags(pass_flag::local_definition);
+                    
+                    REBAR_CC_DEBUG("Dereference origin data if needed.");
+
+                    const auto& dereference_needed = cc.newLabel();
+                    const auto& dereference_unneeded = cc.newLabel();
+
+                    if (dereference_required) {
+                        // Test if object needs explicit referencing.
+                        cc.cmp(asmjit::x86::qword_ptr(ctx.identifier), object::simple_type_end_boundary);
+                        cc.jg(dereference_needed);
+                        cc.jmp(dereference_unneeded);
+
+                        cc.bind(dereference_needed);
+
+                        REBAR_CC_DEBUG("Dereference function.");
+
+                        REBAR_CODE_GENERATION_GUARD({
+                            asmjit::InvokeNode* dereference_func_invoke;
+                            cc.invoke(&dereference_func_invoke, _ext_dereference_object, asmjit::FuncSignatureT<void, object*>(platform_call_convention));
+                            dereference_func_invoke->setArg(0, ctx.identifier);
+                        })
+
+                        cc.bind(dereference_unneeded);
+                    }
+
+                    bool push_required = pre_value_pass & pass_flag::clobber_identifier;
+
+                    if (push_required) {
+                        ctx.push_identifier();
+                    }
+
                     perform_node_pass(ctx, a_expression.get_operand(1), a_side);
+
+                    if (push_required) {
+                        ctx.pop_identifier();
+                    }
+
+                    REBAR_CC_DEBUG("Assign value.");
+
+                    cc.mov(asmjit::x86::qword_ptr(ctx.identifier), out_type);
+                    cc.mov(asmjit::x86::qword_ptr(ctx.identifier, object_data_offset), out_data);
 
                     const auto& reference_needed = cc.newLabel();
                     const auto& reference_unneeded = cc.newLabel();
@@ -58,7 +102,7 @@ namespace rebar {
                     REBAR_CC_DEBUG("Test referencing.");
 
                     // Test if object needs explicit referencing.
-                    cc.cmp(out_type, object::simple_type_end_boundary);
+                    cc.cmp(asmjit::x86::qword_ptr(ctx.identifier), object::simple_type_end_boundary);
                     cc.jg(reference_needed);
                     cc.jmp(reference_unneeded);
 
@@ -68,57 +112,11 @@ namespace rebar {
 
                     REBAR_CODE_GENERATION_GUARD({
                         asmjit::InvokeNode* reference_func_invoke;
-                        cc.invoke(&reference_func_invoke, _ext_reference_object, asmjit::FuncSignatureT<void, size_t, size_t>(platform_call_convention));
-                        reference_func_invoke->setArg(0, out_type);
-                        reference_func_invoke->setArg(1, out_data);
+                        cc.invoke(&reference_func_invoke, _ext_reference_object, asmjit::FuncSignatureT<void, object*>(platform_call_convention));
+                        reference_func_invoke->setArg(0, ctx.identifier);
                     })
 
                     cc.bind(reference_unneeded);
-
-                    REBAR_CC_DEBUG("Push value.");
-
-                    // TODO: Optimization: See if side stack operations can be avoided.
-
-                    ctx.push_side(a_side);
-
-                    REBAR_CC_DEBUG("Evaluate assignee.");
-
-                    perform_assignable_node_pass(ctx, a_expression.get_operand(0));
-
-                    cc.mov(out_type, asmjit::x86::qword_ptr(ctx.identifier));
-                    cc.mov(out_data, asmjit::x86::qword_ptr(ctx.identifier, object_data_offset));
-
-                    REBAR_CC_DEBUG("Dereference origin data if needed.");
-
-                    const auto& dereference_needed = cc.newLabel();
-                    const auto& dereference_unneeded = cc.newLabel();
-
-                    // Test if object needs explicit referencing.
-                    cc.cmp(out_type, object::simple_type_end_boundary);
-                    cc.jg(dereference_needed);
-                    cc.jmp(dereference_unneeded);
-
-                    cc.bind(dereference_needed);
-
-                    REBAR_CC_DEBUG("Dereference function.");
-
-                    REBAR_CODE_GENERATION_GUARD({
-                        asmjit::InvokeNode* dereference_func_invoke;
-                        cc.invoke(&dereference_func_invoke, _ext_dereference_object, asmjit::FuncSignatureT<void, size_t, size_t>(platform_call_convention));
-                        dereference_func_invoke->setArg(0, out_type);
-                        dereference_func_invoke->setArg(1, out_data);
-                    })
-
-                    cc.bind(dereference_unneeded);
-
-                    REBAR_CC_DEBUG("Pop value.");
-
-                    ctx.pop_side(a_side);
-
-                    REBAR_CC_DEBUG("Assign value.");
-
-                    cc.mov(asmjit::x86::qword_ptr(ctx.identifier), out_type);
-                    cc.mov(asmjit::x86::qword_ptr(ctx.identifier, object_data_offset), out_data);
                 }
 
                 break;
@@ -1369,6 +1367,8 @@ namespace rebar {
 
                     perform_node_pass(ctx, *it, a_side);
 
+                    asmjit::x86::Mem argument(argument_allocation);
+
                     cc.mov(argument_allocation, out_type);
                     argument_allocation.addOffset(object_data_offset);
                     cc.mov(argument_allocation, out_data);
@@ -1388,11 +1388,12 @@ namespace rebar {
 
                     REBAR_CC_DEBUG("Call reference.");
 
+                    cc.lea(ctx.identifier, argument);
+
                     REBAR_CODE_GENERATION_GUARD({
                         asmjit::InvokeNode* reference_func_invoke;
-                        cc.invoke(&reference_func_invoke, _ext_reference_object, asmjit::FuncSignatureT<void, size_t, size_t>(platform_call_convention));
-                        reference_func_invoke->setArg(0, out_type);
-                        reference_func_invoke->setArg(1, out_data);
+                        cc.invoke(&reference_func_invoke, _ext_reference_object, asmjit::FuncSignatureT<void, object*>(platform_call_convention));
+                        reference_func_invoke->setArg(0, ctx.identifier);
                     })
 
                     cc.bind(reference_unneeded);
@@ -1431,6 +1432,8 @@ namespace rebar {
                 for (auto it = a_expression.get_operands().begin() + 1; it != a_expression.get_operands().cend(); ++it) {
                     REBAR_CC_DEBUG("Test argument dereferencing. (%d)", argument_offset);
 
+                    asmjit::x86::Mem argument(argument_allocation);
+
                     cc.mov(out_type, argument_allocation);
                     argument_allocation.addOffset(object_data_offset);
                     cc.mov(out_data, argument_allocation);
@@ -1448,11 +1451,12 @@ namespace rebar {
 
                     REBAR_CC_DEBUG("Dereference function.");
 
+                    cc.lea(ctx.identifier, argument);
+
                     REBAR_CODE_GENERATION_GUARD({
                         asmjit::InvokeNode* dereference_func_invoke;
-                        cc.invoke(&dereference_func_invoke, _ext_dereference_object, asmjit::FuncSignatureT<void, size_t, size_t>(platform_call_convention));
-                        dereference_func_invoke->setArg(0, out_type);
-                        dereference_func_invoke->setArg(1, out_data);
+                        cc.invoke(&dereference_func_invoke, _ext_dereference_object, asmjit::FuncSignatureT<void, object*>(platform_call_convention));
+                        dereference_func_invoke->setArg(0, ctx.identifier);
                     })
 
                     cc.bind(dereference_unneeded);
@@ -1627,6 +1631,8 @@ namespace rebar {
 
                     perform_node_pass(ctx, *it, a_side);
 
+                    asmjit::x86::Mem argument(argument_allocation);
+
                     cc.mov(argument_allocation, out_type);
                     argument_allocation.addOffset(object_data_offset);
                     cc.mov(argument_allocation, out_data);
@@ -1646,11 +1652,12 @@ namespace rebar {
 
                     REBAR_CC_DEBUG("Call reference.");
 
+                    cc.lea(ctx.identifier, argument);
+
                     REBAR_CODE_GENERATION_GUARD({
                         asmjit::InvokeNode* reference_func_invoke;
-                        cc.invoke(&reference_func_invoke, _ext_reference_object, asmjit::FuncSignatureT<void, size_t, size_t>(platform_call_convention));
-                        reference_func_invoke->setArg(0, out_type);
-                        reference_func_invoke->setArg(1, out_data);
+                        cc.invoke(&reference_func_invoke, _ext_reference_object, asmjit::FuncSignatureT<void, object*>(platform_call_convention));
+                        reference_func_invoke->setArg(0, ctx.identifier);
                     })
 
                     cc.bind(reference_unneeded);
@@ -1724,6 +1731,8 @@ namespace rebar {
                 for (auto it = a_expression.get_operands().begin() + 1; it != a_expression.get_operands().cend(); ++it) {
                     REBAR_CC_DEBUG("Test argument dereferencing. (%d)", argument_offset);
 
+                    asmjit::x86::Mem argument(argument_allocation);
+
                     cc.mov(out_type, argument_allocation);
                     argument_allocation.addOffset(object_data_offset);
                     cc.mov(out_data, argument_allocation);
@@ -1741,11 +1750,12 @@ namespace rebar {
 
                     REBAR_CC_DEBUG("Dereference function.");
 
+                    cc.lea(ctx.identifier, argument);
+
                     REBAR_CODE_GENERATION_GUARD({
                         asmjit::InvokeNode *dereference_func_invoke;
-                        cc.invoke(&dereference_func_invoke, _ext_dereference_object, asmjit::FuncSignatureT<void, size_t, size_t>(platform_call_convention));
-                        dereference_func_invoke->setArg(0, out_type);
-                        dereference_func_invoke->setArg(1, out_data);
+                        cc.invoke(&dereference_func_invoke, _ext_dereference_object, asmjit::FuncSignatureT<void, object*>(platform_call_convention));
+                        dereference_func_invoke->setArg(0, ctx.identifier);
                     })
 
                     cc.bind(dereference_unneeded);
@@ -1820,6 +1830,10 @@ namespace rebar {
                                 cc.mov(asmjit::x86::qword_ptr(ctx.identifier, object_data_offset), 0);
 
                                 pass.set_flags(pass_flag::clobber_identifier);
+
+                                if (pass.flags_set(pass_flag::check_local_definition)) {
+                                    pass.set_flags(pass_flag::local_definition);
+                                }
 
                                 ++ctx.local_stack_position;
                                 ++ctx.block_local_offsets.back();

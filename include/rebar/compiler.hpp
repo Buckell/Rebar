@@ -118,17 +118,19 @@ namespace rebar {
             REBAR_DEFINE_FLAG(void_code_generation, 3);
             // Evaluates expression as constant.
             REBAR_DEFINE_FLAG(evaluate_constant_expression, 4);
+            REBAR_DEFINE_FLAG(check_local_definition, 5);
 
             // Return Flags
 
-            REBAR_DEFINE_FLAG(clobber_left, 1);
-            REBAR_DEFINE_FLAG(clobber_right, 2);
-            REBAR_DEFINE_FLAG(clobber_identifier, 3);
-            REBAR_DEFINE_FLAG(clobber_return, 4);
-            REBAR_DEFINE_FLAG(clobber_transfer, 5);
+            REBAR_DEFINE_FLAG(clobber_left,        1);
+            REBAR_DEFINE_FLAG(clobber_right,       2);
+            REBAR_DEFINE_FLAG(clobber_identifier,  3);
+            REBAR_DEFINE_FLAG(clobber_return,      4);
+            REBAR_DEFINE_FLAG(clobber_transfer,    5);
 
-            REBAR_DEFINE_FLAG(dynamic_expression, 10);
+            REBAR_DEFINE_FLAG(dynamic_expression,  10);
             REBAR_DEFINE_FLAG(constant_assignable, 11);
+            REBAR_DEFINE_FLAG(local_definition,    12);
         };
 
         struct function_context {
@@ -357,8 +359,12 @@ namespace rebar {
                 return last_output;
             }
 
+            void unset_out_flags(flags a_flags) noexcept {
+                get_output_flags() &= ~a_flags;
+            }
+
             [[nodiscard]] bool out_flags_set(flags a_flags) noexcept {
-                return get_input_flags() & a_flags;
+                return output_flags() & a_flags;
             }
 
             // RAII controller for passes.

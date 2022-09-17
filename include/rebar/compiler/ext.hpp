@@ -14,45 +14,41 @@ namespace rebar {
         return &env->global_table()[object{ (type)object_type, object_data }];
     }
 
-    void _ext_reference_object(size_t object_type, size_t object_data) {
-        object o((type)object_type, object_data);
-
-        switch (o.object_type()) {
+    void _ext_reference_object(object* obj) {
+        switch (obj->object_type()) {
             case type::string:
-                o.get_string().reference();
+                obj->get_string().reference();
                 break;
             case type::table:
-                ++(o.get_table().m_reference_count);
+                ++(obj->get_table().m_reference_count);
                 break;
             case type::array:
-                o.get_array().reference();
+                obj->get_array().reference();
                 break;
             case type::native_object:
-                o.get_native_object().reference();
+                obj->get_native_object().reference();
                 break;
             default:
                 break;
         }
     }
 
-    void _ext_dereference_object(size_t object_type, size_t object_data) {
-        object o((type)object_type, object_data);
-
-        switch (o.object_type()) {
+    void _ext_dereference_object(object* obj) {
+        switch (obj->object_type()) {
             case type::string:
-                o.get_string().dereference();
+                obj->get_string().dereference();
                 break;
             case type::table:
-                if (--(o.get_table().m_reference_count) == 0) {
-                    delete &o.get_table();
+                if (--(obj->get_table().m_reference_count) == 0) {
+                    delete &obj->get_table();
                 }
 
                 break;
             case type::array:
-                o.get_array().dereference();
+                obj->get_array().dereference();
                 break;
             case type::native_object:
-                o.get_native_object().dereference();
+                obj->get_native_object().dereference();
                 break;
             default:
                 break;
