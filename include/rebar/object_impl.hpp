@@ -452,20 +452,18 @@ namespace rebar {
     object object::equals(environment& a_environment, object lhs, const object rhs) {
         if (lhs.m_type != rhs.m_type) {
             return boolean_false;
-        }
-
-        if (lhs.is_simply_comparable()) {
-            return object(type::boolean, lhs.m_data == rhs.m_data);
+        } else if (lhs.is_simply_comparable()) {
+            return object::from_bool(lhs.m_data == rhs.m_data);
         } else {
             switch (lhs.m_type) {
                 case type::native_object:
                     return lhs.get_native_object().overload_equality(a_environment, rhs);
+                default:
+                    return boolean_false;
             }
 
             // TODO: Implement comparisons for complexly comparable types.
         }
-
-        return false;
     }
 
     object object::not_equals(environment& a_environment, object lhs, const object rhs) {
@@ -727,53 +725,41 @@ namespace rebar {
 
     object object::postfix_increment(environment& a_environment) {
         switch (m_type) {
-            case type::null:
-                return null;
             case type::boolean:
             case type::integer: {
                 integer result = get_integer() + 1;
                 m_data = *reinterpret_cast<size_t*>(&result);
                 return result - 1;
             }
-            case type::function:
-                return null;
             case type::number: {
                 number result = get_number() + 1;
                 m_data = *reinterpret_cast<size_t*>(&result);
                 return result - 1;
             }
-            case type::string:
-            case type::table:
-            case type::array:
-                return null;
             case type::native_object:
                 return get_native_object().overload_postfix_increment(a_environment);
+            default:
+                return null;
         }
     }
 
     object object::postfix_decrement(environment& a_environment) {
         switch (m_type) {
-            case type::null:
-                return null;
             case type::boolean:
             case type::integer: {
                 integer result = get_integer() - 1;
                 m_data = *reinterpret_cast<size_t*>(&result);
                 return result + 1;
             }
-            case type::function:
-                return null;
             case type::number: {
                 number result = get_number() - 1;
                 m_data = *reinterpret_cast<size_t*>(&result);
                 return result + 1;
             }
-            case type::string:
-            case type::table:
-            case type::array:
-                return null;
             case type::native_object:
                 return get_native_object().overload_postfix_decrement(a_environment);
+            default:
+                return null;
         }
     }
 
