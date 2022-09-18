@@ -541,7 +541,6 @@ namespace rebar {
                 }
                     //case separator::seek:
                 case separator::ternary:
-                    std::cout << resolve_node(a_expression.get_operand(0)) << " " << resolve_node(a_expression.get_operand(1)) << " " << resolve_node(a_expression.get_operand(2)) << std::endl;
                     return resolve_node(a_expression.get_operand(0)) ? resolve_node(a_expression.get_operand(1)) : resolve_node(a_expression.get_operand(2));
                 case separator::namespace_index:
                 case separator::direct:
