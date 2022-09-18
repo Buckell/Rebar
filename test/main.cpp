@@ -6,57 +6,7 @@
 
 #include "nlohmann/json.hpp"
 
-int main() {
-    std::function<std::pair<size_t, size_t> (const std::filesystem::path&)> traverse_directory;
-    traverse_directory = [&traverse_directory](const std::filesystem::path& a_path) noexcept -> std::pair<size_t, size_t> {
-        size_t total_lines = 0;
-        size_t content_lines = 0;
-
-        for (auto& item : std::filesystem::directory_iterator(a_path)) {
-            if (item.is_directory()) {
-                auto counts = traverse_directory(item.path());
-
-                total_lines += counts.first;
-                content_lines += counts.second;
-            } else {
-                std::ifstream file_stream(item.path());
-
-                for (std::string str; std::getline(file_stream, str);) {
-                    ++total_lines;
-                    content_lines += str.size() > 0;
-                }
-            }
-        }
-
-        return { total_lines, content_lines };
-    };
-
-    std::filesystem::path include_directory("../include/rebar");
-    auto sloc = traverse_directory(include_directory);
-
-    std::cout << "SLOC - TOTAL LINES: " << sloc.first << " - NON-EMPTY LINES: " << sloc.second << std::endl;
-
-    rebar::environment renv(rebar::use_provider<rebar::compiler>);
-
-    rebar::library::load_implicit_libraries(renv);
-
-    std::string file_contents{ rebar::read_file("../test/test.rbr") };
-
-    rebar::lexer& code_lexer = renv.code_lexer();
-    rebar::parse_unit p_unit = rebar::parse(code_lexer, file_contents);
-
-    std::cout << p_unit.string_representation() << std::endl;
-
-    auto f = renv.compile_string(file_contents);
-
-    rebar::object o = f();
-
-    std::cout << o << '\n' << std::endl;
-
-    if (rebar::debug_mode) {
-        ((rebar::compiler&)renv.execution_provider()).enable_assembly_debug_output(false);
-    }
-
+void run_test_cases(rebar::environment& env) {
     std::filesystem::path test_case_directory("../test/cases");
 
     size_t max_name_size = 0;
@@ -89,10 +39,15 @@ int main() {
             code = code_data;
         }
 
-        auto func = renv.compile_string(code, file.path().stem().string(), "TEST CASE");
+        if (!file_json["enable_debug_output"].is_null()) {
+            rebar::parse_unit pu = rebar::parse(env.code_lexer(), code);
+            std::cout << pu.string_representation() << std::endl;
+        }
+
+        auto func = env.compile_string(code, file.path().stem().string(), "TEST CASE");
 
         std::stringstream out_stream;
-        renv.set_out_stream(out_stream);
+        env.set_out_stream(out_stream);
 
         auto ret = func();
 
@@ -163,6 +118,65 @@ int main() {
             std::cout << "RETURNED " << ret << " (EXPECTED " << return_target << ")" << std::endl;
         }
     }
+}
+
+void run_test_file(rebar::environment& env) {
+    std::string file_contents{ rebar::read_file("../test/test.rbr") };
+
+    rebar::parse_unit p_unit = rebar::parse(env.code_lexer(), file_contents);
+    std::cout << p_unit.string_representation() << std::endl;
+
+    auto test_file = env.compile_string(file_contents);
+    std::cout << test_file() << '\n' << std::endl;
+}
+
+int main() {
+    std::function<std::pair<size_t, size_t> (const std::filesystem::path&)> traverse_directory;
+    traverse_directory = [&traverse_directory](const std::filesystem::path& a_path) noexcept -> std::pair<size_t, size_t> {
+        size_t total_lines = 0;
+        size_t content_lines = 0;
+
+        for (auto& item : std::filesystem::directory_iterator(a_path)) {
+            if (item.is_directory()) {
+                auto counts = traverse_directory(item.path());
+
+                total_lines += counts.first;
+                content_lines += counts.second;
+            } else {
+                std::ifstream file_stream(item.path());
+
+                for (std::string str; std::getline(file_stream, str);) {
+                    ++total_lines;
+                    content_lines += str.size() > 0;
+                }
+            }
+        }
+
+        return { total_lines, content_lines };
+    };
+
+    std::filesystem::path include_directory("../include/rebar");
+    auto sloc = traverse_directory(include_directory);
+
+    std::cout << "SLOC - TOTAL LINES: " << sloc.first << " - NON-EMPTY LINES: " << sloc.second << std::endl;
+
+    rebar::environment compiler_environment(rebar::use_provider<rebar::compiler>);
+    rebar::library::load_implicit_libraries(compiler_environment);
+
+    rebar::environment interpreter_environment(rebar::use_provider<rebar::interpreter>);
+    rebar::library::load_implicit_libraries(interpreter_environment);
+
+    std::cout << "========== [ MAIN TEST ] ==========" << std::endl;
+    run_test_file(compiler_environment);
+
+    compiler_environment.execution_provider<rebar::compiler>().enable_assembly_debug_output(false);
+    std::cout << "========== [ COMPILER ] ==========" << std::endl;
+    run_test_cases(compiler_environment);
+    std::cout << std::endl;
+
+    std::cout << "========== [ INTERPRETER ] ==========" << std::endl;
+    run_test_cases(interpreter_environment);
+    std::cout << std::endl;
 
     /*
     std::cout << "STOP POINT" << std::endl;

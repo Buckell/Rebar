@@ -320,6 +320,11 @@ namespace rebar {
         [[nodiscard]] provider& execution_provider() noexcept {
             return *m_provider;
         }
+
+        template <typename t_provider>
+        [[nodiscard]] t_provider& execution_provider() noexcept {
+            return dynamic_cast<t_provider&>(*m_provider);
+        }
     };
 }
 
