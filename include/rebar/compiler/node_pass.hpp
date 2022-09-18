@@ -10,7 +10,7 @@
 #include "../compiler.hpp"
 
 namespace rebar {
-    void compiler::perform_node_pass(function_context& ctx, const node& a_node, output_side a_side) {
+    void compiler::perform_node_pass(function_context& ctx, const node& a_node, output_side a_side, std::optional<const node*> a_next) {
         function_context::pass_control pass(ctx);
 
         auto [out_type, out_data] = ctx.expression_registers(a_side);
@@ -45,6 +45,8 @@ namespace rebar {
 
                 REBAR_CC_DEBUG("If declaration start.");
 
+                ctx.if_stack.back() = cc.newLabel();
+
                 const auto& label_end = cc.newLabel();
 
                 perform_expression_pass(ctx, conditional, output_side::lefthand);
@@ -56,14 +58,55 @@ namespace rebar {
 
                 perform_block_pass(ctx, body);
 
+                cc.jmp(*ctx.if_stack.back());
+
                 cc.bind(label_end);
+
+                if (!a_next.has_value() || !((*a_next)->is_else_if_declaration() || (*a_next)->is_else_declaration())) {
+                    cc.bind(*ctx.if_stack.back());
+                }
 
                 break;
             }
-            case node::type::else_if_declaration:
+            case node::type::else_if_declaration: {
+                const auto& decl = a_node.get_else_if_declaration();
+                const auto& conditional = decl.m_conditional;
+                const auto& body = decl.m_body;
+
+                REBAR_CC_DEBUG("Else-if declaration start.");
+
+                const auto& label_end = cc.newLabel();
+
+                perform_expression_pass(ctx, conditional, output_side::lefthand);
+
+                REBAR_CC_DEBUG("Compare conditional value.");
+
+                cc.cmp(ctx.lhs_data, 0);
+                cc.je(label_end);
+
+                perform_block_pass(ctx, body);
+
+                cc.jmp(*ctx.if_stack.back());
+
+                cc.bind(label_end);
+
+                if (!a_next.has_value() || !((*a_next)->is_else_if_declaration() || (*a_next)->is_else_declaration())) {
+                    cc.bind(*ctx.if_stack.back());
+                }
+
                 break;
-            case node::type::else_declaration:
+            }
+            case node::type::else_declaration: {
+                const auto& decl = a_node.get_else_declaration();
+
+                perform_block_pass(ctx, decl);
+
+                if (!a_next.has_value() || !((*a_next)->is_else_if_declaration() || (*a_next)->is_else_declaration())) {
+                    cc.bind(*ctx.if_stack.back());
+                }
+
                 break;
+            }
             case node::type::for_declaration:
                 break;
             case node::type::function_declaration: {
@@ -259,8 +302,6 @@ namespace rebar {
     }
 
     void compiler::perform_assignable_node_pass(function_context& ctx, const node& a_node) {
-        flags out_flags = pass_flag::none;
-
         function_context::pass_control pass(ctx);
 
         if (a_node.is_token()) {

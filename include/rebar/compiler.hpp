@@ -181,6 +181,8 @@ namespace rebar {
 
             flags last_output;
 
+            std::vector<std::optional<asmjit::Label>> if_stack;
+
             function_context(asmjit::x86::Compiler& a_cc, compiler_function_source& a_source) : assembler(a_cc), source(a_source) {
                 input_flag_stack.push_back(pass_flag::none); // Next pass.
                 output_flag_stack.push_back(pass_flag::none); // Current pass.
@@ -410,7 +412,7 @@ namespace rebar {
         void perform_preliminary_function_scan(function_context& ctx, const node::block& a_block);
 
         void perform_block_pass(function_context& ctx, const node::block& a_block);
-        void perform_node_pass(function_context& ctx, const node& a_node, output_side a_side = output_side::lefthand);
+        void perform_node_pass(function_context& ctx, const node& a_node, output_side a_side = output_side::lefthand, std::optional<const node*> a_next = std::nullopt);
         void perform_expression_pass(function_context& ctx, const node::expression& a_expression, output_side a_side = output_side::lefthand);
         void perform_assignable_node_pass(function_context& ctx, const node& a_node);
         void perform_assignable_expression_pass(function_context& ctx, const node::expression& a_expression);
