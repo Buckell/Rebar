@@ -49,9 +49,9 @@ namespace rebar {
                     case token::type::keyword: {
                         switch (tok.get_keyword()) {
                             case keyword::literal_true:
-                                return object{ true };
+                                return boolean_true;
                             case keyword::literal_false:
-                                return object{ false };
+                                return boolean_false;
                             case keyword::literal_null:
                             default:
                                 return null;
@@ -541,6 +541,7 @@ namespace rebar {
                 }
                     //case separator::seek:
                 case separator::ternary:
+                    std::cout << resolve_node(a_expression.get_operand(0)) << " " << resolve_node(a_expression.get_operand(1)) << " " << resolve_node(a_expression.get_operand(2)) << std::endl;
                     return resolve_node(a_expression.get_operand(0)) ? resolve_node(a_expression.get_operand(1)) : resolve_node(a_expression.get_operand(2));
                 case separator::namespace_index:
                 case separator::direct:
