@@ -40,16 +40,12 @@ namespace rebar {
                 switch (tok.token_type()) {
                     case token::type::identifier:
                         return find_variable(m_environment.str(tok.get_identifier()));
-                        break;
                     case token::type::string_literal:
                         return m_environment.str(tok.get_string_literal());
-                        break;
                     case token::type::integer_literal:
                         return tok.get_integer_literal();
-                        break;
                     case token::type::number_literal:
                         return tok.get_number_literal();
-                        break;
                     case token::type::keyword: {
                         switch (tok.get_keyword()) {
                             case keyword::literal_true:
@@ -445,7 +441,7 @@ namespace rebar {
                     if (lhs.is_native_object()) {
                         return lhs.get_native_object().overload_logical_and(m_environment, resolve_node(a_expression.get_operand(1)));
                     } else {
-                        return lhs ? resolve_node(a_expression.get_operand(1)) : object(false);
+                        return lhs ? resolve_node(a_expression.get_operand(1)) : lhs;
                     }
                 }
                 case separator::logical_not:
@@ -464,7 +460,7 @@ namespace rebar {
                     return assignee;
                 }
                 case separator::bitwise_xor:
-                    return object::bitwise_or(m_environment, resolve_node(a_expression.get_operand(0)), resolve_node(a_expression.get_operand(1)));
+                    return object::bitwise_xor(m_environment, resolve_node(a_expression.get_operand(0)), resolve_node(a_expression.get_operand(1)));
                 case separator::bitwise_xor_assignment: {
                     object& assignee = resolve_assignable(a_expression.get_operand(0));
 

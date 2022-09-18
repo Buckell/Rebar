@@ -54,7 +54,7 @@ namespace rebar {
                     perform_assignable_node_pass(ctx, a_expression.get_operand(0));
                     bool dereference_required = !ctx.out_flags_set(pass_flag::local_definition);
                     ctx.unset_out_flags(pass_flag::local_definition);
-                    
+
                     REBAR_CC_DEBUG("Dereference origin data if needed.");
 
                     const auto& dereference_needed = cc.newLabel();
