@@ -253,7 +253,10 @@ namespace rebar {
             immediate_table(immediate_table&& a_decl) noexcept = default;
         };
 
-        using data_type = std::variant<std::nullptr_t, const token*, expression, std::vector<node>, if_declaration, for_declaration, function_declaration, switch_declaration, class_declaration, immediate_table>;
+        using break_statement = size_t;
+        using continue_statement = size_t;
+
+        using data_type = std::variant<std::nullptr_t, size_t, const token*, expression, std::vector<node>, if_declaration, for_declaration, function_declaration, switch_declaration, class_declaration, immediate_table>;
 
         type m_type;
         data_type m_data;
@@ -493,6 +496,22 @@ namespace rebar {
 
         [[nodiscard]] const immediate_array& get_immediate_array() const noexcept {
             return std::get<immediate_array>(m_data);
+        }
+
+        [[nodiscard]] break_statement& get_break_statement() noexcept {
+            return std::get<break_statement>(m_data);
+        }
+
+        [[nodiscard]] const break_statement& get_break_statement() const noexcept {
+            return std::get<break_statement>(m_data);
+        }
+
+        [[nodiscard]] continue_statement& get_continue_statement() noexcept {
+            return std::get<continue_statement>(m_data);
+        }
+
+        [[nodiscard]] const continue_statement& get_continue_statement() const noexcept {
+            return std::get<continue_statement>(m_data);
         }
 
         [[nodiscard]] std::string to_string() const noexcept {
@@ -1952,10 +1971,41 @@ namespace rebar {
 
                     // TODO: Throw incomplete while-loop syntax error.
                 }
-            } else if (tok == keyword::do_loop) {
+            } else if (tok == keyword::do_loop && a_tokens[i + 1] == separator::scope_open) {
                 // Do-while-loop parsing routine.
 
+                span<token>::iterator end_body_find = find_next(a_tokens.subspan(i + 2), separator::scope_close, separator::scope_open, separator::scope_close);
 
+                if (*(end_body_find + 1) == keyword::while_loop && *(end_body_find + 2) == separator::group_open) {
+                    span<token>::iterator end_condition_find = find_next(span<token>(end_body_find + 3, a_tokens.end()), separator::group_close, separator::group_open, separator::group_close);
+
+                    if (*(end_condition_find + 1) == separator::end_statement) {
+                        span<token> body_tokens(a_tokens.begin() + i + 2, end_body_find);
+                        span<source_position> body_source_positions = a_source_positions.subspan(i + 2, body_tokens.size());
+
+                        span<token> conditional_tokens(end_body_find + 3, end_condition_find);
+                        span<source_position> conditional_source_positions(body_source_positions.end() + 3, body_source_positions.end() + 3 + conditional_tokens.size());
+
+                        span<token> loop_tokens(a_tokens.begin() + i, end_condition_find + 2);
+                        span<source_position> loop_source_positions = a_source_positions.subspan(i, loop_tokens.size());
+
+                        nodes.emplace_back(
+                            loop_tokens,
+                            loop_source_positions,
+                            node::type::do_declaration,
+                            node::do_declaration(
+                                parse_group(conditional_tokens, conditional_source_positions),
+                                parse_block(a_plaintext, body_tokens, body_source_positions)
+                            )
+                        );
+
+                        i += std::distance(loop_tokens.end() - 1, a_tokens.begin() + i);
+                    } else {
+                        // TODO: Throw error on missing end statement token.
+                    }
+                } else {
+                    // TODO: Throw error on missing while.
+                }
             } else if (tok == keyword::switch_statement) {
                 // Switch statement parsing routine.
 
@@ -1991,28 +2041,92 @@ namespace rebar {
                         a_tokens.subspan(i, 2),
                         a_source_positions.subspan(i, 2),
                         node::type::break_statement,
-                        std::nullptr_t{}
+                        0
                     );
-                } else {
-                    // Malformed break statement.
-                    // TODO: Throw malformed break statement error.
-                }
 
-                ++i;
+                    ++i;
+                } else {
+                    span<token>::iterator end_statement_find(find_next(a_tokens.subspan(i + 2), separator::end_statement, separator::scope_open, separator::scope_close));
+
+                    span<token> tokens(a_tokens.begin() + i + 1, end_statement_find);
+                    span<source_position> source_positions = a_source_positions.subspan(i + 1, tokens.size());
+
+                    if (tokens.size() == 1) {
+                        if (tokens[0].is_integer_literal()) {
+                            integer break_index = tokens[0].get_integer_literal();
+
+                            nodes.emplace_back(
+                                tokens,
+                                source_positions,
+                                node::type::break_statement,
+                                std::min(break_index, 1ll) - 1
+                            );
+                        }
+                    } else if (tokens.size() == 3 && tokens[0] == separator::selector_open) {
+                        if (tokens[1].is_integer_literal()) {
+                            integer break_index = tokens[1].get_integer_literal();
+
+                            nodes.emplace_back(
+                                tokens,
+                                source_positions,
+                                node::type::break_statement,
+                                std::min(break_index, 0ll)
+                            );
+                        } else {
+                            // TODO: Throw invalid break operand error.
+                        }
+                    } else {
+                        // TODO: Throw invalid break operand error.
+                    }
+
+                    i += std::distance(end_statement_find, a_tokens.begin() + i);
+                }
             } else if (tok == keyword::continue_statement) {
                 if (a_tokens[i + 1] == separator::end_statement) {
                     nodes.emplace_back(
                         a_tokens.subspan(i, 2),
                         a_source_positions.subspan(i, 2),
                         node::type::continue_statement,
-                        std::nullptr_t{}
+                        0
                     );
-                } else {
-                    // Malformed break statement.
-                    // TODO: Throw malformed break statement error.
-                }
 
-                ++i;
+                    ++i;
+                } else {
+                    span<token>::iterator end_statement_find(find_next(a_tokens.subspan(i + 2), separator::end_statement, separator::scope_open, separator::scope_close));
+
+                    span<token> tokens(a_tokens.begin() + i + 1, end_statement_find);
+                    span<source_position> source_positions = a_source_positions.subspan(i + 1, tokens.size());
+
+                    if (tokens.size() == 1) {
+                        if (tokens[0].is_integer_literal()) {
+                            integer continue_index = tokens[0].get_integer_literal();
+
+                            nodes.emplace_back(
+                                    tokens,
+                                    source_positions,
+                                    node::type::continue_statement,
+                                    std::min(continue_index, 1ll) - 1
+                            );
+                        }
+                    } else if (tokens.size() == 3 && tokens[0] == separator::selector_open) {
+                        if (tokens[1].is_integer_literal()) {
+                            integer continue_index = tokens[1].get_integer_literal();
+
+                            nodes.emplace_back(
+                                tokens,
+                                source_positions,
+                                node::type::break_statement,
+                                std::min(continue_index, 0ll)
+                            );
+                        } else {
+                            // TODO: Throw invalid break operand error.
+                        }
+                    } else {
+                        // TODO: Throw invalid break operand error.
+                    }
+
+                    i += std::distance(end_statement_find, a_tokens.begin() + i);
+                }
             } else if (tok == keyword::local) {
                 // Local definition declared.
 
