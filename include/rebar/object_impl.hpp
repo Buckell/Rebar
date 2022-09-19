@@ -190,7 +190,7 @@ namespace rebar {
         }
     }
 
-    object object::multiply(environment& a_environment, object lhs, const object rhs) {
+    object object::multiply(environment& a_environment, const object& lhs, const object& rhs) {
         switch (lhs.m_type) {
             case type::null:
                 return null;
@@ -264,7 +264,7 @@ namespace rebar {
         }
     }
 
-    object object::subtract(environment& a_environment, object lhs, const object rhs) {
+    object object::subtract(environment& a_environment, const object& lhs, const object& rhs) {
         switch (lhs.m_type) {
             case type::null:
                 return null;
@@ -321,7 +321,7 @@ namespace rebar {
         }
     }
 
-    object object::divide(environment& a_environment, object lhs, const object rhs) {
+    object object::divide(environment& a_environment, const object& lhs, const object& rhs) {
         switch (lhs.m_type) {
             case type::null:
             case type::boolean:
@@ -371,7 +371,7 @@ namespace rebar {
         }
     }
 
-    object object::modulus(environment& a_environment, object lhs, const object rhs) {
+    object object::modulus(environment& a_environment, const object& lhs, const object& rhs) {
         switch (lhs.m_type) {
             case type::null:
             case type::boolean:
@@ -398,7 +398,7 @@ namespace rebar {
         }
     }
 
-    object object::exponentiate(environment& a_environment, object lhs, const object rhs) {
+    object object::exponentiate(environment& a_environment, const object& lhs, const object& rhs) {
         switch (lhs.m_type) {
             case type::null:
                 return null;
@@ -449,7 +449,7 @@ namespace rebar {
         }
     }
 
-    object object::equals(environment& a_environment, object lhs, const object rhs) {
+    object object::equals(environment& a_environment, const object& lhs, const object& rhs) {
         if (lhs.m_type != rhs.m_type) {
             return boolean_false;
         } else if (lhs.is_simply_comparable()) {
@@ -466,7 +466,7 @@ namespace rebar {
         }
     }
 
-    object object::not_equals(environment& a_environment, object lhs, const object rhs) {
+    object object::not_equals(environment& a_environment, const object& lhs, const object& rhs) {
         if (lhs.m_type != rhs.m_type) {
             return true;
         }
@@ -477,15 +477,15 @@ namespace rebar {
             switch (lhs.m_type) {
                 case type::native_object:
                     return lhs.get_native_object().overload_inverse_equality(a_environment, rhs);
+                default:
+                    return boolean_false;
             }
 
             // TODO: Implement comparisons for complexly comparable types.
         }
-
-        return false;
     }
 
-    object object::shift_left(environment& a_environment, object lhs, const object rhs) {
+    object object::shift_left(environment& a_environment, const object& lhs, const object& rhs) {
         if (rhs.is_integer() && (lhs.is_integer() || lhs.is_number())) {
             return { lhs.m_type, lhs.m_data << rhs.get_integer() };
         } else {
@@ -499,7 +499,7 @@ namespace rebar {
         }
     }
 
-    object object::shift_right(environment& a_environment, object lhs, const object rhs) {
+    object object::shift_right(environment& a_environment, const object& lhs, const object& rhs) {
         if (rhs.is_integer() && (lhs.is_integer() || lhs.is_number())) {
             return { lhs.m_type, lhs.m_data >> rhs.get_integer() };
         } else {
@@ -513,7 +513,7 @@ namespace rebar {
         }
     }
 
-    object object::bitwise_xor(environment& a_environment, object lhs, const object rhs) {
+    object object::bitwise_xor(environment& a_environment, const object& lhs, const object& rhs) {
         if ((lhs.is_integer() || lhs.is_number()) && (rhs.is_integer() || rhs.is_number())) {
             return { lhs.m_type, lhs.m_data ^ rhs.m_data };
         } else {
@@ -527,7 +527,7 @@ namespace rebar {
         }
     }
 
-    object object::bitwise_or(environment& a_environment, object lhs, const object rhs) {
+    object object::bitwise_or(environment& a_environment, const object& lhs, const object& rhs) {
         if ((lhs.is_integer() || lhs.is_number()) && (rhs.is_integer() || rhs.is_number())) {
             return { lhs.m_type, lhs.m_data | rhs.m_data };
         } else {
@@ -541,7 +541,7 @@ namespace rebar {
         }
     }
 
-    object object::bitwise_and(environment& a_environment, object lhs, const object rhs) {
+    object object::bitwise_and(environment& a_environment, const object& lhs, const object& rhs) {
         if ((lhs.is_integer() || lhs.is_number()) && (rhs.is_integer() || rhs.is_number())) {
             return { lhs.m_type, lhs.m_data & rhs.m_data };
         } else {
@@ -555,7 +555,7 @@ namespace rebar {
         }
     }
 
-    object object::bitwise_not(environment& a_environment, object lhs) {
+    object object::bitwise_not(environment& a_environment, const object& lhs) {
         if (lhs.is_integer() || lhs.is_number()) {
             return { lhs.m_type, ~lhs.m_data };
         } else {
@@ -569,15 +569,15 @@ namespace rebar {
         }
     }
 
-    object object::logical_not(environment& a_environment, object lhs) {
+    object object::logical_not(environment& a_environment, const object& lhs) {
         if (lhs.is_native_object()) {
             return lhs.get_native_object().overload_logical_not(a_environment);
         } else {
-            return !lhs.boolean_evaluate();
+            return object::from_bool(!lhs.boolean_evaluate());
         }
     }
 
-    object object::logical_or(environment& a_environment, object lhs, const object rhs) {
+    object object::logical_or(environment& a_environment, const object& lhs, const object& rhs) {
         if (lhs.is_native_object()) {
             return lhs.get_native_object().overload_logical_or(a_environment, rhs);
         } else {
@@ -585,7 +585,7 @@ namespace rebar {
         }
     }
 
-    object object::logical_and(environment& a_environment, object lhs, const object rhs) {
+    object object::logical_and(environment& a_environment, const object& lhs, const object& rhs) {
         if (lhs.is_native_object()) {
             return lhs.get_native_object().overload_logical_and(a_environment, rhs);
         } else {
@@ -593,7 +593,7 @@ namespace rebar {
         }
     }
 
-    object object::greater_than(environment& a_environment, object lhs, const object rhs) {
+    object object::greater_than(environment& a_environment, const object& lhs, const object& rhs) {
         if (lhs.is_integer()) {
             if (rhs.is_integer()) {
                 return lhs.get_integer() > rhs.get_integer();
@@ -621,7 +621,7 @@ namespace rebar {
         return null;
     }
 
-    object object::lesser_than(environment& a_environment, object lhs, const object rhs) {
+    object object::lesser_than(environment& a_environment, const object& lhs, const object& rhs) {
         if (lhs.is_integer()) {
             if (rhs.is_integer()) {
                 return lhs.get_integer() < rhs.get_integer();
@@ -649,19 +649,19 @@ namespace rebar {
         return false;
     }
 
-    object object::greater_than_equal_to(environment& a_environment, object lhs, const object rhs) {
+    object object::greater_than_equal_to(environment& a_environment, const object& lhs, const object& rhs) {
         if (lhs.is_native_object()) {
             return lhs.get_native_object().overload_greater_equality(a_environment, rhs);
         } else {
-            return !(rhs < rhs);
+            return !object::lesser_than(a_environment, lhs, rhs);
         }
     }
 
-    object object::lesser_than_equal_to(environment& a_environment, object lhs, const object rhs) {
+    object object::lesser_than_equal_to(environment& a_environment, const object& lhs, const object& rhs) {
         if (lhs.is_native_object()) {
             return lhs.get_native_object().overload_lesser_equality(a_environment, rhs);
         } else {
-            return !(rhs > rhs);
+            return !object::greater_than(a_environment, lhs, rhs);
         }
     }
 

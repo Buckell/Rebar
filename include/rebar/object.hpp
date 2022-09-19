@@ -235,64 +235,64 @@ namespace rebar {
         static object add(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement subtraction operations for remaining types.
-        static object subtract(environment& a_environment, object lhs, const object rhs);
+        static object subtract(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement multiplication operations for remaining types.
-        static object multiply(environment& a_environment, object lhs, const object rhs);
+        static object multiply(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement division operations for remaining types.
-        static object divide(environment& a_environment, object lhs, const object rhs);
+        static object divide(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement modulus operations for remaining types.
-        static object modulus(environment& a_environment, object lhs, const object rhs);
+        static object modulus(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement exponentiation operations for remaining types.
-        static object exponentiate(environment& a_environment, object lhs, const object rhs);
+        static object exponentiate(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement equality operations for remaining types.
-        static object equals(environment& a_environment, object lhs, const object rhs);
+        static object equals(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement inverse-equality operations for remaining types.
-        static object not_equals(environment& a_environment, object lhs, const object rhs);
+        static object not_equals(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement shift-left operations for remaining types.
-        static object shift_left(environment& a_environment, object lhs, const object rhs);
+        static object shift_left(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement shift-right operations for remaining types.
-        static object shift_right(environment& a_environment, object lhs, const object rhs);
+        static object shift_right(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement bitwise XOR operations for remaining types.
-        static object bitwise_xor(environment& a_environment, object lhs, const object rhs);
+        static object bitwise_xor(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement bitwise OR operations for remaining types.
-        static object bitwise_or(environment& a_environment, object lhs, const object rhs);
+        static object bitwise_or(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement bitwise AND operations for remaining types.
-        static object bitwise_and(environment& a_environment, object lhs, const object rhs);
+        static object bitwise_and(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement bitwise NOT operations for remaining types.
-        static object bitwise_not(environment& a_environment, object lhs);
+        static object bitwise_not(environment& a_environment, const object& lhs);
 
         // TODO: Implement logical NOT operations for remaining types.
-        static object logical_not(environment& a_environment, object lhs);
+        static object logical_not(environment& a_environment, const object& lhs);
 
         // TODO: Implement logical OR operations for remaining types.
-        static object logical_or(environment& a_environment, object lhs, const object rhs);
+        static object logical_or(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement logical AND operations for remaining types.
-        static object logical_and(environment& a_environment, object lhs, const object rhs);
+        static object logical_and(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement greater-than operations for remaining types.
-        static object greater_than(environment& a_environment, object lhs, const object rhs);
+        static object greater_than(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement lesser-than operations for remaining types.
-        static object lesser_than(environment& a_environment, object lhs, const object rhs);
+        static object lesser_than(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement greater-than-equal-to operations for remaining types.
-        static object greater_than_equal_to(environment& a_environment, object lhs, const object rhs);
+        static object greater_than_equal_to(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement lesser-than-equal-to operations for remaining types.
-        static object lesser_than_equal_to(environment& a_environment, object lhs, const object rhs);
+        static object lesser_than_equal_to(environment& a_environment, const object& lhs, const object& rhs);
 
         // TODO: Implement prefix-increment operations for remaining types.
         object& prefix_increment(environment& a_environment);
@@ -310,7 +310,7 @@ namespace rebar {
             return { type::boolean, a_boolean };
         }
 
-        friend std::ostream& operator << (std::ostream& lhs, object rhs) noexcept {
+        friend std::ostream& operator << (std::ostream& lhs, const object& rhs) noexcept {
             lhs << rhs.to_string();
             return lhs;
         }
@@ -326,13 +326,13 @@ namespace rebar {
 
         static void block_dereference(object* a_objects, size_t a_object_count);
 
-        [[nodiscard]] bool operator == (const object rhs) const noexcept {
+        [[nodiscard]] bool operator == (const object& rhs) const noexcept {
             if (m_type != rhs.m_type) {
                 return false;
             }
 
-            if (is_simply_comparable()) {
-                return m_data == rhs.m_data;
+            if (m_data == rhs.m_data) {
+                return true;
             }
 
             return false;
