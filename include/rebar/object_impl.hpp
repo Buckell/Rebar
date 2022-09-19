@@ -468,7 +468,7 @@ namespace rebar {
 
     object object::not_equals(environment& a_environment, const object& lhs, const object& rhs) {
         if (lhs.m_type != rhs.m_type) {
-            return true;
+            return boolean_true;
         }
 
         if (lhs.is_simply_comparable()) {
@@ -596,73 +596,113 @@ namespace rebar {
     object object::greater_than(environment& a_environment, const object& lhs, const object& rhs) {
         if (lhs.is_integer()) {
             if (rhs.is_integer()) {
-                return lhs.get_integer() > rhs.get_integer();
+                return object::from_bool(lhs.get_integer() > rhs.get_integer());
             } else if (rhs.is_number()) {
-                return lhs.get_integer() > rhs.get_number();
+                return object::from_bool(lhs.get_integer() > rhs.get_number());
             } else if (rhs.is_string()) {
-                return lhs.get_integer() > rhs.get_string().length();
+                return object::from_bool(lhs.get_integer() > rhs.get_string().length());
             }
         } else if (lhs.is_number()) {
             if (rhs.is_integer()) {
-                return lhs.get_number() > rhs.get_integer();
+                return object::from_bool(lhs.get_number() > rhs.get_integer());
             } else if (rhs.is_number()) {
-                return lhs.get_number() > rhs.get_number();
+                return object::from_bool(lhs.get_number() > rhs.get_number());
             }
         } else if (lhs.is_string()) {
             if (rhs.is_integer()) {
-                return (lhs.get_string().length() > rhs.get_integer());
+                return object::from_bool(lhs.get_string().length() > rhs.get_integer());
             }
         } else if (lhs.is_native_object()) {
             return lhs.get_native_object().overload_greater(a_environment, rhs);
         }
 
         // TODO: Throw invalid operation exception.
-        // TODO: Provide overload for native objects.
-        return null;
+
+        return boolean_false;
     }
 
     object object::lesser_than(environment& a_environment, const object& lhs, const object& rhs) {
         if (lhs.is_integer()) {
             if (rhs.is_integer()) {
-                return lhs.get_integer() < rhs.get_integer();
+                return object::from_bool(lhs.get_integer() < rhs.get_integer());
             } else if (rhs.is_number()) {
-                return lhs.get_integer() < rhs.get_number();
+                return object::from_bool(lhs.get_integer() < rhs.get_number());
             } else if (rhs.is_string()) {
-                return lhs.get_integer() < rhs.get_string().length();
+                return object::from_bool(lhs.get_integer() < rhs.get_string().length());
             }
         } else if (lhs.is_number()) {
             if (rhs.is_integer()) {
-                return lhs.get_number() < rhs.get_integer();
+                return object::from_bool(lhs.get_number() < rhs.get_integer());
             } else if (rhs.is_number()) {
-                return lhs.get_number() < rhs.get_number();
+                return object::from_bool(lhs.get_number() < rhs.get_number());
             }
         } else if (lhs.is_string()) {
             if (rhs.is_integer()) {
-                return (lhs.get_string().length() < rhs.get_integer());
+                return object::from_bool(lhs.get_string().length() < rhs.get_integer());
             }
         } else if (lhs.is_native_object()) {
             return lhs.get_native_object().overload_lesser(a_environment, rhs);
         }
 
         // TODO: Throw invalid operation exception.
-        // TODO: Provide overload for native objects.
-        return false;
+
+        return boolean_false;
     }
 
     object object::greater_than_equal_to(environment& a_environment, const object& lhs, const object& rhs) {
-        if (lhs.is_native_object()) {
+        if (lhs.is_integer()) {
+            if (rhs.is_integer()) {
+                return object::from_bool(lhs.get_integer() >= rhs.get_integer());
+            } else if (rhs.is_number()) {
+                return object::from_bool(lhs.get_integer() >= rhs.get_number());
+            } else if (rhs.is_string()) {
+                return object::from_bool(lhs.get_integer() >= rhs.get_string().length());
+            }
+        } else if (lhs.is_number()) {
+            if (rhs.is_integer()) {
+                return object::from_bool(lhs.get_number() >= rhs.get_integer());
+            } else if (rhs.is_number()) {
+                return object::from_bool(lhs.get_number() >= rhs.get_number());
+            }
+        } else if (lhs.is_string()) {
+            if (rhs.is_integer()) {
+                return object::from_bool(lhs.get_string().length() >= rhs.get_integer());
+            }
+        } else if (lhs.is_native_object()) {
             return lhs.get_native_object().overload_greater_equality(a_environment, rhs);
-        } else {
-            return !object::lesser_than(a_environment, lhs, rhs);
         }
+
+        // TODO: Throw invalid operation exception.
+
+        return boolean_false;
     }
 
     object object::lesser_than_equal_to(environment& a_environment, const object& lhs, const object& rhs) {
-        if (lhs.is_native_object()) {
+        if (lhs.is_integer()) {
+            if (rhs.is_integer()) {
+                return object::from_bool(lhs.get_integer() <= rhs.get_integer());
+            } else if (rhs.is_number()) {
+                return object::from_bool(lhs.get_integer() <= rhs.get_number());
+            } else if (rhs.is_string()) {
+                return object::from_bool(lhs.get_integer() <= rhs.get_string().length());
+            }
+        } else if (lhs.is_number()) {
+            if (rhs.is_integer()) {
+                return object::from_bool(lhs.get_number() <= rhs.get_integer());
+            } else if (rhs.is_number()) {
+                return object::from_bool(lhs.get_number() <= rhs.get_number());
+            }
+        } else if (lhs.is_string()) {
+            if (rhs.is_integer()) {
+                return object::from_bool(lhs.get_string().length() <= rhs.get_integer());
+            }
+        } else if (lhs.is_native_object()) {
             return lhs.get_native_object().overload_lesser_equality(a_environment, rhs);
-        } else {
-            return !object::greater_than(a_environment, lhs, rhs);
         }
+
+        // TODO: Throw invalid operation exception.
+
+        return boolean_false;
     }
 
     object& object::prefix_increment(environment& a_environment) {
