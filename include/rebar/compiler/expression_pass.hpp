@@ -57,8 +57,8 @@ namespace rebar {
 
                     REBAR_CC_DEBUG("Dereference origin data if needed.");
 
-                    const auto& dereference_needed = cc.newLabel();
-                    const auto& dereference_unneeded = cc.newLabel();
+                    auto dereference_needed = cc.newLabel();
+                    auto dereference_unneeded = cc.newLabel();
 
                     if (dereference_required) {
                         // Test if object needs explicit referencing.
@@ -96,8 +96,8 @@ namespace rebar {
                     cc.mov(asmjit::x86::qword_ptr(ctx.identifier), out_type);
                     cc.mov(asmjit::x86::qword_ptr(ctx.identifier, object_data_offset), out_data);
 
-                    const auto& reference_needed = cc.newLabel();
-                    const auto& reference_unneeded = cc.newLabel();
+                    auto reference_needed = cc.newLabel();
+                    auto reference_unneeded = cc.newLabel();
 
                     REBAR_CC_DEBUG("Test referencing.");
 
@@ -520,9 +520,9 @@ namespace rebar {
                     ctx.pop_side(output_side::lefthand);
                 }
 
-                const auto& label_end = cc.newLabel();
-                const auto& label_bad_compare = cc.newLabel();
-                const auto& label_complex_compare = cc.newLabel();
+                auto label_end = cc.newLabel();
+                auto label_bad_compare = cc.newLabel();
+                auto label_complex_compare = cc.newLabel();
 
                 REBAR_CC_DEBUG("Comparing types.");
 
@@ -600,9 +600,9 @@ namespace rebar {
                     ctx.pop_side(output_side::lefthand);
                 }
 
-                const auto& label_end = cc.newLabel();
-                const auto& label_good_compare = cc.newLabel();
-                const auto& label_complex_compare = cc.newLabel();
+                auto label_end = cc.newLabel();
+                auto label_good_compare = cc.newLabel();
+                auto label_complex_compare = cc.newLabel();
 
                 REBAR_CC_DEBUG("Comparing types.");
 
@@ -860,7 +860,7 @@ namespace rebar {
             case separator::logical_or: {
                 perform_node_pass(ctx, a_expression.get_operand(0), a_side);
 
-                const auto& label_end = cc.newLabel();
+                auto label_end = cc.newLabel();
 
                 cc.cmp(out_data, 0);
                 cc.jne(label_end);
@@ -878,7 +878,7 @@ namespace rebar {
             case separator::logical_and: {
                 perform_node_pass(ctx, a_expression.get_operand(0), a_side);
 
-                const auto& label_end = cc.newLabel();
+                auto label_end = cc.newLabel();
 
                 cc.cmp(out_data, 0);
                 cc.je(label_end);
@@ -1583,8 +1583,8 @@ namespace rebar {
             case separator::ternary: {
                 perform_node_pass(ctx, a_expression.get_operand(0), a_side);
 
-                const auto& label_second = cc.newLabel();
-                const auto& label_end = cc.newLabel();
+                auto label_second = cc.newLabel();
+                auto label_end = cc.newLabel();
 
                 cc.cmp(out_data, 0);
                 cc.je(label_second);
@@ -1637,8 +1637,8 @@ namespace rebar {
                     cc.mov(argument_allocation, out_data);
                     argument_allocation.addOffset(object_data_offset);
 
-                    const auto& reference_needed = cc.newLabel();
-                    const auto& reference_unneeded = cc.newLabel();
+                    auto reference_needed = cc.newLabel();
+                    auto reference_unneeded = cc.newLabel();
 
                     REBAR_CC_DEBUG("Test argument referencing.");
 
@@ -1702,8 +1702,8 @@ namespace rebar {
                     cc.mov(out_data, argument_allocation);
                     argument_allocation.addOffset(object_data_offset);
 
-                    const auto& dereference_needed = cc.newLabel();
-                    const auto& dereference_unneeded = cc.newLabel();
+                    auto dereference_needed = cc.newLabel();
+                    auto dereference_unneeded = cc.newLabel();
 
                     // Test if object needs explicit referencing.
                     cc.cmp(out_type, object::simple_type_end_boundary);
@@ -1901,8 +1901,8 @@ namespace rebar {
                     cc.mov(argument_allocation, out_data);
                     argument_allocation.addOffset(object_data_offset);
 
-                    const auto& reference_needed = cc.newLabel();
-                    const auto& reference_unneeded = cc.newLabel();
+                    auto reference_needed = cc.newLabel();
+                    auto reference_unneeded = cc.newLabel();
 
                     REBAR_CC_DEBUG("Test argument referencing.");
 
@@ -2001,8 +2001,8 @@ namespace rebar {
                     cc.mov(out_data, argument_allocation);
                     argument_allocation.addOffset(object_data_offset);
 
-                    const auto& dereference_needed = cc.newLabel();
-                    const auto& dereference_unneeded = cc.newLabel();
+                    auto dereference_needed = cc.newLabel();
+                    auto dereference_unneeded = cc.newLabel();
 
                     // Test if object needs explicit referencing.
                     cc.cmp(out_type, object::simple_type_end_boundary);

@@ -47,7 +47,7 @@ namespace rebar {
 
                 ctx.if_stack.back() = cc.newLabel();
 
-                const auto& label_end = cc.newLabel();
+                auto label_end = cc.newLabel();
 
                 perform_expression_pass(ctx, conditional, output_side::lefthand);
 
@@ -75,7 +75,7 @@ namespace rebar {
 
                 REBAR_CC_DEBUG("Else-if declaration start.");
 
-                const auto& label_end = cc.newLabel();
+                auto label_end = cc.newLabel();
 
                 perform_expression_pass(ctx, conditional, output_side::lefthand);
 
@@ -140,8 +140,32 @@ namespace rebar {
 
                 break;
             }
-            case node::type::while_declaration:
+            case node::type::while_declaration: {
+                const auto& decl = a_node.get_while_declaration();
+
+                auto label_begin = cc.newLabel();
+                auto label_end = cc.newLabel();
+                auto label_body = cc.newLabel();
+
+                cc.jmp(label_begin);
+
+                cc.bind(label_body);
+
+                perform_block_pass(ctx, decl.m_body);
+
+                cc.bind(label_begin);
+
+                perform_expression_pass(ctx, decl.m_conditional, a_side);
+
+                cc.cmp(out_data, 0);
+                cc.jne(label_body);
+
+                cc.bind(label_end);
+
+                ctx.loop_stack.back() = { label_begin, label_end };
+
                 break;
+            }
             case node::type::do_declaration:
                 break;
             case node::type::switch_declaration:

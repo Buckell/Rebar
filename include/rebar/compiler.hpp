@@ -183,6 +183,8 @@ namespace rebar {
 
             std::vector<std::optional<asmjit::Label>> if_stack;
 
+            std::vector<std::optional<std::pair<asmjit::Label, asmjit::Label>>> loop_stack;
+
             function_context(asmjit::x86::Compiler& a_cc, compiler_function_source& a_source) : assembler(a_cc), source(a_source) {
                 input_flag_stack.push_back(pass_flag::none); // Next pass.
                 output_flag_stack.push_back(pass_flag::none); // Current pass.

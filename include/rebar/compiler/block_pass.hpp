@@ -20,6 +20,7 @@ namespace rebar {
         ctx.block_local_offsets.emplace_back(0);
 
         ctx.if_stack.push_back(std::nullopt);
+        ctx.loop_stack.push_back(std::nullopt);
 
         for (size_t i = 0; i < a_block.size(); ++i) {
             perform_node_pass(ctx, a_block[i], output_side::lefthand, i + 1 < a_block.size() ? std::optional<const node*>(&a_block[i + 1]) : std::nullopt);
@@ -51,6 +52,7 @@ namespace rebar {
             pass.set_flags(pass_flag::clobber_identifier | pass_flag::clobber_left);
         }
 
+        ctx.loop_stack.pop_back();
         ctx.if_stack.pop_back();
         ctx.block_local_offsets.pop_back();
         ctx.local_variable_list.pop_back();
