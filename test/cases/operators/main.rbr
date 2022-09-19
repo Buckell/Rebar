@@ -23,3 +23,6 @@ local num = 4;
 PrintLn(num, ++num, num++, num);
 PrintLn(num, --num, num--, num);
 PrintLn(~num);
+
+PrintLn(num < 4, num <= 4, num < 5);
+PrintLn(num > 4, num >= 4, num > 3);
