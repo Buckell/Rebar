@@ -522,10 +522,11 @@ namespace rebar {
 
                 const auto& label_end = cc.newLabel();
                 const auto& label_bad_compare = cc.newLabel();
-                const auto& label_good_compare = cc.newLabel();
                 const auto& label_complex_compare = cc.newLabel();
 
                 REBAR_CC_DEBUG("Comparing types.");
+
+                // TODO: Bypass pre-checks if LHS is native object.
 
                 cc.cmp(ctx.lhs_type, ctx.rhs_type);
                 cc.jne(label_bad_compare);
@@ -535,11 +536,12 @@ namespace rebar {
                 cc.cmp(ctx.lhs_type, object::simply_comparable_end_boundary);
                 cc.jg(label_complex_compare);
 
-                REBAR_CC_DEBUG("Simple comparison.");
-
-                cc.cmp(ctx.lhs_data, ctx.rhs_data);
-                cc.je(label_good_compare);
-                cc.jmp(label_bad_compare);
+                cc.mov(out_type, type::boolean);     // Load type and true data.
+                cc.xor_(opp_out_type, opp_out_type); // Load type and true data.
+                cc.cmp(ctx.lhs_data, ctx.rhs_data);  // Compare data values.
+                cc.cmove(out_data, out_type);        // Load true if equal.
+                cc.cmovne(out_data, opp_out_type);   // Load true if equal.
+                cc.jmp(label_end);
 
                 REBAR_CC_DEBUG("Complex comparison.");
 
@@ -562,16 +564,7 @@ namespace rebar {
 
                 cc.jmp(label_end);
 
-                REBAR_CC_DEBUG("Good comparison.");
-
-                cc.bind(label_good_compare);
-
-                cc.mov(out_type, type::boolean);
-                cc.mov(out_data, true);
-
-                cc.jmp(label_end);
-
-                REBAR_CC_DEBUG("Bad comparison.");
+                REBAR_CC_DEBUG("Simple comparison.");
 
                 cc.bind(label_bad_compare);
 
@@ -584,8 +577,86 @@ namespace rebar {
 
                 break;
             }
-            case separator::inverse_equality:
+            case separator::inverse_equality: {
+                REBAR_CC_DEBUG("Performing operation. (INVERSE EQUALITY)");
+
+                perform_node_pass(ctx, a_expression.get_operand(0), output_side::lefthand);
+
+                bool push_required = true;
+
+                if (flags_set(compiler_flag::optimize_bypass_register_save)) {
+                    ctx.target_flags(pass_flag::void_code_generation);
+                    perform_node_pass(ctx, a_expression.get_operand(1), output_side::righthand);
+                    push_required = ctx.out_flags_set(pass_flag::clobber_left);
+                }
+
+                if (push_required) {
+                    ctx.push_side(output_side::lefthand);
+                }
+
+                perform_node_pass(ctx, a_expression.get_operand(1), output_side::righthand);
+
+                if (push_required) {
+                    ctx.pop_side(output_side::lefthand);
+                }
+
+                const auto& label_end = cc.newLabel();
+                const auto& label_good_compare = cc.newLabel();
+                const auto& label_complex_compare = cc.newLabel();
+
+                REBAR_CC_DEBUG("Comparing types.");
+
+                // TODO: Bypass pre-checks if LHS is native object.
+
+                cc.cmp(ctx.lhs_type, ctx.rhs_type);
+                cc.jne(label_good_compare);
+
+                REBAR_CC_DEBUG("Check simple comparison.");
+
+                cc.cmp(ctx.lhs_type, object::simply_comparable_end_boundary);
+                cc.jg(label_complex_compare);
+
+                cc.mov(out_type, type::boolean);     // Load type and true data.
+                cc.xor_(opp_out_type, opp_out_type); // Load type and true data.
+                cc.cmp(ctx.lhs_data, ctx.rhs_data);  // Compare data values.
+                cc.cmove(out_data, opp_out_type);    // Load false if equal.
+                cc.cmovne(out_data, out_type);       // Load true if not equal.
+                cc.jmp(label_end);
+
+                REBAR_CC_DEBUG("Complex comparison.");
+
+                cc.bind(label_complex_compare);
+
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), ctx.lhs_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), ctx.lhs_data);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* invoke;
+                    cc.invoke(&invoke, _ext_object_not_equals, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    invoke->setArg(0, ctx.environment);
+                    invoke->setArg(1, ctx.return_object);
+                    invoke->setArg(2, ctx.rhs_type);
+                    invoke->setArg(3, ctx.rhs_data);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
+
+                cc.jmp(label_end);
+
+                REBAR_CC_DEBUG("Simple comparison.");
+
+                cc.bind(label_good_compare);
+
+                cc.mov(out_type, type::boolean);
+                cc.mov(out_data, true);
+
+                cc.bind(label_end);
+
+                REBAR_CC_DEBUG("End of operation. (INVERSE EQUALITY)");
+
                 break;
+            }
             case separator::greater:
                 break;
             case separator::lesser:

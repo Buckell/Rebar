@@ -89,6 +89,10 @@ namespace rebar {
     void _ext_object_equals(environment* a_env, object* a_lhs_return, type a_rhs_type, size_t a_rhs_data) {
         *a_lhs_return = object::equals(*a_env, *a_lhs_return, { a_rhs_type, a_rhs_data });
     }
+
+    void _ext_object_not_equals(environment* a_env, object* a_lhs_return, type a_rhs_type, size_t a_rhs_data) {
+        *a_lhs_return = object::not_equals(*a_env, *a_lhs_return, { a_rhs_type, a_rhs_data });
+    }
 }
 
 #endif //REBAR_OBJECT_EXT_HPP
