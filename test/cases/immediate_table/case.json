@@ -1,0 +1,8 @@
+{
+    "name": "Simple Immediate Table",
+    "output": [
+        "Hello!",
+        "Goodbye!",
+        "2"
+    ]
+}

@@ -1,0 +1,10 @@
+{
+    "name": "Regex Library",
+    "output": [
+        "true true",
+        "true true",
+        "false true",
+        "Hello, planet! Goodbye, planet!",
+        "planet hello world planet hello planet"
+    ]
+}

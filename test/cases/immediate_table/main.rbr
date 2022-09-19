@@ -1,0 +1,9 @@
+local table = {
+   hello = "Hello!",
+   ["goodbye"] = "Goodbye!",
+   [1] = 2
+};
+
+PrintLn(table.hello);
+PrintLn(table["goodbye"]);
+PrintLn(table[1]);

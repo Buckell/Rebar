@@ -1,0 +1,21 @@
+{
+    "name": "String Base Library",
+    "output": [
+        "true false",
+        "true false",
+        "true",
+        "7 4",
+        "false false true",
+        "1 1",
+        "13",
+        "false true",
+        "[ hello, goodbye, world ]",
+        "true false",
+        "[ 97, 98, 99 ]",
+        "hello, there!",
+        "HELLO, THERE!",
+        "hello goodbye   world",
+        "hello goodbye   world  ",
+        "   hello goodbye   world"
+    ]
+}

@@ -1,0 +1,6 @@
+{
+    "name": "In-Statement Reassign Expression",
+    "output": [
+        "1 2 2 3 3 2 2 2"
+    ]
+}

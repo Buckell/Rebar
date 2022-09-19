@@ -1,0 +1,8 @@
+{
+    "name": "Simple Print",
+    "output": [
+        "Hello, world!",
+        "Goodbye, world!",
+        "Hello, world!"
+    ]
+}

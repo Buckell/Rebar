@@ -1,0 +1,9 @@
+{
+    "name": "Logical Operations Test",
+    "output": [
+        "4 5",
+        "true true",
+        "false",
+        "true"
+    ]
+}

@@ -1,0 +1,8 @@
+local StringUtility = Include("StringUtility");
+
+local sb = new StringUtility::StringBuilder;
+sb.Append("Hello,");
+sb.Append(" ");
+sb.Append("world!");
+
+return sb.ToString();

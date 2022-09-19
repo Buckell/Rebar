@@ -1,0 +1,11 @@
+{
+    "name": "Compound Assignment Operators",
+    "output": [
+        "8",
+        "2",
+        "HELLO HELLO HELLO HELLO ",
+        "2.000000",
+        "4",
+        "1"
+    ]
+}

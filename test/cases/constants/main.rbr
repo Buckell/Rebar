@@ -1,0 +1,3 @@
+const constant1 = "Goodbye," + " " + "world! " + ((5 * 2) + 5);
+
+PrintLn(constant1, constant1 + 4);

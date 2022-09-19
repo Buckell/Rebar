@@ -1,0 +1,7 @@
+{
+    "name": "Table Value Reassignment",
+    "output": [
+        "43 Hello, world! null",
+        "Goodbye! 100 Goodbye!"
+    ]
+}

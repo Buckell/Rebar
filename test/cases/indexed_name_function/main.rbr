@@ -1,0 +1,23 @@
+local Meta = Include("Meta");
+
+local table = {
+   nested = {}
+};
+
+function table.func(a, b = "Hello, world!", c = 4) {
+   PrintLn(a, b, c);
+}
+
+function table.nested.func(a, b = "Hello, world!", c = 4) {
+   PrintLn(a, b, c);
+}
+
+table.func();
+table.func(10, 20);
+table.func(10, 20, "Goodbye!");
+PrintLn(Meta::GetFunctionInfo(table.func).Name);
+
+table.nested.func();
+table.nested.func(10, 20);
+table.nested.func(10, 20, "Goodbye!");
+PrintLn(Meta::GetFunctionInfo(table.nested.func).Name);

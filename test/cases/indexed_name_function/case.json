@@ -1,0 +1,13 @@
+{
+    "name": "Indexed-Name Function Definition",
+    "output": [
+        "null Hello, world! 4",
+        "10 20 4",
+        "10 20 Goodbye!",
+        "table.func",
+        "null Hello, world! 4",
+        "10 20 4",
+        "10 20 Goodbye!",
+        "table.nested.func"
+    ]
+}

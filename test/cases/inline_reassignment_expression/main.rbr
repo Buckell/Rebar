@@ -1,0 +1,4 @@
+local a = 1;
+local b = 2;
+
+PrintLn(a, b, a = b, b = 3, b, a, b = a, b);

@@ -1,0 +1,12 @@
+local table = {
+   data1 = 43,
+   [2] = "Hello, world!"
+};
+
+PrintLn(table.data1, table[2], table.data3);
+
+table.data3 = "Goodbye!";
+table.data1 = table.data3;
+table[2] = 100;
+
+PrintLn(table.data1, table[2], table.data3);
