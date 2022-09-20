@@ -181,9 +181,9 @@ namespace rebar {
 
                 perform_block_pass(ctx, decl.m_body);
 
-                perform_expression_pass(ctx, decl.m_conditional, a_side);
-
                 cc.bind(label_begin);
+
+                perform_expression_pass(ctx, decl.m_conditional, a_side);
 
                 cc.test(out_data, out_data);
                 cc.jne(label_body);
