@@ -13,3 +13,6 @@ array[1] = 5;
 PrintLn(TestPass1(array, 1));
 TestPass2(array, 1);
 PrintLn(TestPass1(array, 1));
+
+local single_array = [ 10 ];
+PrintLn(single_array);
