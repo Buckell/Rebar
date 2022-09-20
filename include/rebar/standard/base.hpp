@@ -16,8 +16,7 @@ namespace rebar::library::standard {
 
             if (env->arg_count() == 0) {
                 out << std::endl;
-                *ret = null;
-                return;
+                REBAR_RETURN(null);
             }
 
             out << env->arg(0);
@@ -28,7 +27,7 @@ namespace rebar::library::standard {
 
             out << std::endl;
 
-            *ret = null;
+            REBAR_RETURN(null);
         }
 
         static REBAR_FUNCTION(Print) {
@@ -42,19 +41,19 @@ namespace rebar::library::standard {
 
             out << std::flush;
 
-            *ret = rebar::null;
+            REBAR_RETURN(null);
         }
 
         static REBAR_FUNCTION(Include) {
             std::string_view sv = env->arg(0).get_string().to_string_view();
-            *ret = load_library(*env, sv);
+            REBAR_RETURN(load_library(*env, sv));
         }
 
         static REBAR_FUNCTION(Input) {
             std::string input;
             std::getline(env->cin(), input);
 
-            *ret = env->str(input);
+            REBAR_RETURN(env->str(input));
         }
 
         object load(environment& a_environment) override {
