@@ -1,0 +1,16 @@
+local a = 0;
+local b = 0;
+
+do {
+    do {
+        if (b == 2)
+            continue;
+
+        PrintLn(a, b);
+    } while (b++ < 3);
+
+    b = 0;
+
+    if (a == 3)
+        break;
+} while (a++ < 5);
