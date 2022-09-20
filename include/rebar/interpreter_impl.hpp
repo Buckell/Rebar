@@ -791,8 +791,21 @@ namespace rebar {
 
                         break;
                     }
-                    case node::type::do_declaration:
+                    case node::type::do_declaration: {
+                        const auto& decl = n.get_do_declaration();
+
+                        do {
+                            return_state state{ evaluate_block(decl.m_body) };
+
+                            if (state.status == return_status::function_return) {
+                                return state;
+                            } else if (state.status == return_status::loop_break) {
+                                break;
+                            }
+                        } while (evaluate_expression(decl.m_conditional).boolean_evaluate());
+
                         break;
+                    }
                     case node::type::switch_declaration:
                         break;
                     case node::type::class_declaration:
