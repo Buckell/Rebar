@@ -17,6 +17,9 @@
         "6 5 5 4",
         "-5",
         "false true true",
-        "false true true"
+        "false true true",
+        "false true",
+        "Hello! Hey! Ho!",
+        "false"
     ]
 }

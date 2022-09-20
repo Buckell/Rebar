@@ -26,3 +26,7 @@ PrintLn(~num);
 
 PrintLn(num < 4, num <= 4, num < 5);
 PrintLn(num > 4, num >= 4, num > 3);
+
+PrintLn(true && false, false || true);
+PrintLn(null || "Hello!", true and "Hey!" or "Ho!", false and "Hey!" or "Ho!");
+PrintLn(!true);
