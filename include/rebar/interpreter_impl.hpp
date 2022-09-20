@@ -663,6 +663,7 @@ namespace rebar {
         struct return_state {
             return_status status = return_status::normal;
             object result = null;
+            size_t loop_index = 0;
         };
 
         std::function<return_state (const span<node>)> evaluate_block = [this, &local_tables, &evaluate_expression, &evaluate_block, &resolve_assignable_expression](const span<node> a_block) -> return_state {
@@ -739,7 +740,22 @@ namespace rebar {
                         evaluate_expression(decl.m_initialization);
 
                         while (evaluate_expression(decl.m_conditional).boolean_evaluate()) {
-                            evaluate_block(decl.m_body);
+                            return_state state = evaluate_block(decl.m_body);
+
+                            if (state.status == return_status::function_return) {
+                                return state;
+                            } else if (state.status == return_status::loop_break) {
+                                if (state.loop_index == 0) {
+                                    break;
+                                } else {
+                                    --state.loop_index;
+                                    return state;
+                                }
+                            } else if (state.status == return_status::loop_continue && state.loop_index > 0) {
+                                --state.loop_index;
+                                return state;
+                            }
+
                             evaluate_expression(decl.m_iteration);
                         }
 
@@ -785,7 +801,15 @@ namespace rebar {
                             if (state.status == return_status::function_return) {
                                 return state;
                             } else if (state.status == return_status::loop_break) {
-                                break;
+                                if (state.loop_index == 0) {
+                                    break;
+                                } else {
+                                    --state.loop_index;
+                                    return state;
+                                }
+                            } else if (state.status == return_status::loop_continue && state.loop_index > 0) {
+                                --state.loop_index;
+                                return state;
                             }
                         }
 
@@ -800,7 +824,15 @@ namespace rebar {
                             if (state.status == return_status::function_return) {
                                 return state;
                             } else if (state.status == return_status::loop_break) {
-                                break;
+                                if (state.loop_index == 0) {
+                                    break;
+                                } else {
+                                    --state.loop_index;
+                                    return state;
+                                }
+                            } else if (state.status == return_status::loop_continue && state.loop_index > 0) {
+                                --state.loop_index;
+                                return state;
                             }
                         } while (evaluate_expression(decl.m_conditional).boolean_evaluate());
 
@@ -813,9 +845,9 @@ namespace rebar {
                     case node::type::return_statement:
                         return { return_status::function_return, evaluate_expression(n.get_return_statement()) };
                     case node::type::break_statement:
-                        return { return_status::loop_break, null };
+                        return { return_status::loop_break, null, n.get_break_statement() };
                     case node::type::continue_statement:
-                        return { return_status::loop_continue, null };
+                        return { return_status::loop_continue, null, n.get_continue_statement() };
                     default:
                         break;
                 }
