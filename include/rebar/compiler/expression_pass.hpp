@@ -861,6 +861,10 @@ namespace rebar {
                 perform_node_pass(ctx, a_expression.get_operand(0), a_side);
 
                 auto label_end = cc.newLabel();
+                auto label_complex = cc.newLabel();
+
+                cc.cmp(out_data, type::native_object);
+                cc.je(label_complex);
 
                 cc.cmp(out_data, 0);
                 cc.jne(label_end);
@@ -871,6 +875,29 @@ namespace rebar {
 
                 perform_node_pass(ctx, a_expression.get_operand(1), a_side);
 
+                cc.jmp(label_end);
+
+                cc.bind(label_complex);
+
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
+
+                perform_node_pass(ctx, a_expression.get_operand(1), a_side);
+
+                pass.set_flags(pass_flag::clobber_return);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* invoke;
+                    cc.invoke(&invoke, _ext_object_logical_or, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    invoke->setArg(0, ctx.environment);
+                    invoke->setArg(1, ctx.return_object);
+                    invoke->setArg(2, out_type);
+                    invoke->setArg(3, out_data);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
+
                 cc.bind(label_end);
 
                 break;
@@ -879,15 +906,42 @@ namespace rebar {
                 perform_node_pass(ctx, a_expression.get_operand(0), a_side);
 
                 auto label_end = cc.newLabel();
+                auto label_complex = cc.newLabel();
+
+                cc.cmp(out_data, type::native_object);
+                cc.je(label_complex);
 
                 cc.cmp(out_data, 0);
                 cc.je(label_end);
 
-                if (!ctx.constant_side(a_side)) {
+                if (ctx.constant_side(a_side)) {
                     ctx.unset_target_flags(pass_flag::evaluate_constant_expression);
                 }
 
                 perform_node_pass(ctx, a_expression.get_operand(1), a_side);
+
+                cc.jmp(label_end);
+
+                cc.bind(label_complex);
+
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
+
+                perform_node_pass(ctx, a_expression.get_operand(1), a_side);
+
+                pass.set_flags(pass_flag::clobber_return);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* invoke;
+                    cc.invoke(&invoke, _ext_object_logical_and, asmjit::FuncSignatureT<void, environment*, object*, type, size_t>(platform_call_convention));
+                    invoke->setArg(0, ctx.environment);
+                    invoke->setArg(1, ctx.return_object);
+                    invoke->setArg(2, out_type);
+                    invoke->setArg(3, out_data);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
 
                 cc.bind(label_end);
 
@@ -896,12 +950,38 @@ namespace rebar {
             case separator::logical_not: {
                 perform_node_pass(ctx, a_expression.get_operand(0), a_side);
 
+                auto label_complex_compare = cc.newLabel();
+                auto label_end = cc.newLabel();
+
                 if (evaluate_constant) {
-                    const_side = !const_side;
+                    const_side = object::logical_not(m_environment, const_side);
                 }
+
+                cc.cmp(out_type, type::native_object);
+                cc.je(label_complex_compare);
 
                 cc.mov(out_type, type::boolean);
                 cc.not_(out_data);
+                cc.and_(out_data, 1);
+
+                cc.jmp(label_end);
+
+                cc.bind(label_complex_compare);
+
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* invoke;
+                    cc.invoke(&invoke, _ext_object_logical_not, asmjit::FuncSignatureT<void, environment*, object*>(platform_call_convention));
+                    invoke->setArg(0, ctx.environment);
+                    invoke->setArg(1, ctx.return_object);
+                })
+
+                cc.mov(out_type, asmjit::x86::qword_ptr(ctx.return_object));
+                cc.mov(out_data, asmjit::x86::qword_ptr(ctx.return_object, object_data_offset));
+
+                cc.bind(label_end);
 
                 break;
             }

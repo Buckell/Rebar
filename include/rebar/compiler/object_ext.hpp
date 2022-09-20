@@ -109,6 +109,18 @@ namespace rebar {
     void _ext_object_lesser_than_equal_to(environment* a_env, object* a_lhs_return, type a_rhs_type, size_t a_rhs_data) {
         *a_lhs_return = object::lesser_than_equal_to(*a_env, *a_lhs_return, { a_rhs_type, a_rhs_data });
     }
+
+    void _ext_object_logical_or(environment* a_env, object* a_lhs_return, type a_rhs_type, size_t a_rhs_data) {
+        *a_lhs_return = object::logical_or(*a_env, *a_lhs_return, { a_rhs_type, a_rhs_data });
+    }
+
+    void _ext_object_logical_and(environment* a_env, object* a_lhs_return, type a_rhs_type, size_t a_rhs_data) {
+        *a_lhs_return = object::logical_and(*a_env, *a_lhs_return, { a_rhs_type, a_rhs_data });
+    }
+
+    void _ext_object_logical_not(environment* a_env, object* a_lhs_return) {
+        *a_lhs_return = object::logical_not(*a_env, *a_lhs_return);
+    }
 }
 
 #endif //REBAR_OBJECT_EXT_HPP
