@@ -147,6 +147,8 @@ namespace rebar {
                 auto label_end = cc.newLabel();
                 auto label_body = cc.newLabel();
 
+                ctx.loop_stack.emplace_back(std::in_place, label_begin, label_end);
+
                 cc.jmp(label_begin);
 
                 cc.bind(label_body);
@@ -162,7 +164,7 @@ namespace rebar {
 
                 cc.bind(label_end);
 
-                ctx.loop_stack.back() = { label_begin, label_end };
+                ctx.loop_stack.pop_back();
 
                 break;
             }
@@ -260,10 +262,20 @@ namespace rebar {
 
                 break;
             }
-            case node::type::break_statement:
+            case node::type::break_statement: {
+                size_t index = a_node.get_break_statement();
+
+                cc.jmp((*(ctx.loop_stack.rbegin() + index))->second);
+
                 break;
-            case node::type::continue_statement:
+            }
+            case node::type::continue_statement: {
+                size_t index = a_node.get_break_statement();
+
+                cc.jmp((*(ctx.loop_stack.rbegin() + index))->first);
+
                 break;
+            }
             case node::type::immediate_array: {
                 const auto& arr = a_node.get_immediate_array();
 
