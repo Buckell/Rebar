@@ -1543,8 +1543,8 @@ namespace rebar {
                         if (statement_end != a_tokens.cend()) {
                             // Statement bounds located.
 
-                            span<token> statement_tokens(group_close_find + 2, statement_end);
-                            span<source_position> statement_source_positions(conditional_source_positions.end() + 2, conditional_source_positions.end() + 2 + statement_tokens.size());
+                            span<token> statement_tokens(group_close_find + 1, statement_end + 1);
+                            span<source_position> statement_source_positions(conditional_source_positions.end() + 1, conditional_source_positions.end() + 1 + statement_tokens.size());
 
                             span<token> if_statement_tokens(a_tokens.begin() + i, statement_end + 1);
                             span<source_position> if_statement_source_positions = a_source_positions.subspan(i, if_statement_tokens.size());
@@ -1555,12 +1555,7 @@ namespace rebar {
                                 node::type::if_declaration,
                                 node::if_declaration(
                                     parse_group(conditional_tokens, conditional_source_positions),
-                                    {{
-                                        statement_tokens,
-                                        statement_source_positions,
-                                        node::type::expression,
-                                        parse_group(statement_tokens, statement_source_positions)
-                                    }}
+                                    parse_block(a_plaintext, statement_tokens, statement_source_positions)
                                 )
                             );
 
@@ -1631,8 +1626,8 @@ namespace rebar {
                                 if (statement_end != a_tokens.cend()) {
                                     // Statement bounds located.
 
-                                    span<token> statement_tokens(group_close_find + 2, statement_end);
-                                    span<source_position> statement_source_positions(conditional_source_positions.end() + 2, conditional_source_positions.end() + 2 + statement_tokens.size());
+                                    span<token> statement_tokens(group_close_find + 1, statement_end + 1);
+                                    span<source_position> statement_source_positions(conditional_source_positions.end() + 1, conditional_source_positions.end() + 1 + statement_tokens.size());
 
                                     span<token> else_statement_tokens(a_tokens.begin() + i, statement_end + 1);
                                     span<source_position> else_statement_source_positions = a_source_positions.subspan(i, else_statement_tokens.size());
@@ -1642,13 +1637,10 @@ namespace rebar {
                                         else_statement_source_positions,
                                         node::type::else_if_declaration,
                                         node::else_if_declaration(
-                                        parse_group(conditional_tokens, conditional_source_positions),
-                                            {{
-                                                statement_tokens,
-                                                statement_source_positions,
-                                                node::type::expression,
-                                                parse_group(statement_tokens, statement_source_positions)
-                                            }}
+                                            node::if_declaration(
+                                                parse_group(conditional_tokens, conditional_source_positions),
+                                                parse_block(a_plaintext, statement_tokens, statement_source_positions)
+                                            )
                                         )
                                     );
 
@@ -1696,15 +1688,15 @@ namespace rebar {
                         // TODO: Throw incomplete "else" syntax error.
                     }
                 } else {
-                    // Single statement "else if" with postceding statement.
+                    // Single statement "else" with postceding statement.
 
                     span<token>::iterator statement_end_find = find_next(a_tokens.subspan(i + 1), separator::end_statement, separator::scope_open, separator::scope_close);
 
                     if (statement_end_find != a_tokens.cend()) {
-                        span<token> statement_tokens(a_tokens.begin() + i + 1, statement_end_find);
+                        span<token> statement_tokens(a_tokens.begin() + i + 1, statement_end_find + 1);
                         span<source_position> statement_source_positions = a_source_positions.subspan(i + 1, statement_tokens.size());
 
-                        span<token> else_statement_tokens(a_tokens.begin() + i, statement_end_find + 1);
+                        span<token> else_statement_tokens(a_tokens.begin() + i + 1, statement_end_find + 1);
                         span<source_position> else_statement_source_positions = a_source_positions.subspan(i, else_statement_tokens.size());
 
                         nodes.emplace_back(
@@ -1766,7 +1758,7 @@ namespace rebar {
                     // For-loop with postceding statement.
 
                     span<token>::iterator statement_end = find_next(span<token>(group_end + 1, a_tokens.end()), separator::end_statement, separator::scope_open, separator::scope_close);
-                    span<token> body_tokens(group_end + 1, statement_end);
+                    span<token> body_tokens(group_end + 1, statement_end + 1);
                     span<source_position> body_source_positions(group_source_positions.end() + 1, group_source_positions.end() + 1 + body_tokens.size());
 
                     span<token> loop_tokens(a_tokens.begin() + i, statement_end + 1);
@@ -1860,7 +1852,7 @@ namespace rebar {
 
                     span<token>::iterator end_statement_find = find_next(span<token>(group_close_find + 1, a_tokens.end()), separator::end_statement, separator::scope_open, separator::scope_close);
 
-                    span<token> body_tokens(group_close_find + 1, end_statement_find);
+                    span<token> body_tokens(group_close_find + 1, end_statement_find + 1);
                     span<source_position> body_source_positions(argument_source_positions.end() + 1, argument_source_positions.end() + 1 + body_tokens.size());
 
                     span<token> function_tokens(a_tokens.begin() + i, end_statement_find + 1);
@@ -1934,8 +1926,8 @@ namespace rebar {
 
                         span<token>::iterator statement_end = find_next(span<token>(group_close_find + 1, a_tokens.end()), separator::end_statement, separator::scope_open, separator::scope_close);
 
-                        span<token> body_tokens(group_close_find + 1, statement_end);
-                        span<source_position> body_source_positions(conditional_source_positions.end() + 2, conditional_source_positions.end() + 2 + body_tokens.size());
+                        span<token> body_tokens(group_close_find + 1, statement_end + 1);
+                        span<source_position> body_source_positions(conditional_source_positions.end() + 1, conditional_source_positions.end() + 1 + body_tokens.size());
 
                         span<token> loop_tokens(a_tokens.begin() + i, statement_end + 1);
                         span<source_position> loop_source_positions = a_source_positions.subspan(i, loop_tokens.size());
@@ -1950,12 +1942,7 @@ namespace rebar {
                                 node::type::while_declaration,
                                 node::while_declaration(
                                     parse_group(conditional_tokens, conditional_source_positions),
-                                    {{
-                                        body_tokens,
-                                        body_source_positions,
-                                        node::type::expression,
-                                        parse_group(body_tokens, body_source_positions)
-                                    }}
+                                    parse_block(a_plaintext, body_tokens, body_source_positions)
                                 )
                             );
 
