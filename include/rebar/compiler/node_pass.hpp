@@ -53,8 +53,8 @@ namespace rebar {
 
                 REBAR_CC_DEBUG("Compare conditional value.");
 
-                cc.cmp(ctx.lhs_data, 0);
-                cc.je(label_end);
+                cc.test(ctx.lhs_data, ctx.lhs_data);
+                cc.jz(label_end);
 
                 perform_block_pass(ctx, body);
 
@@ -81,8 +81,8 @@ namespace rebar {
 
                 REBAR_CC_DEBUG("Compare conditional value.");
 
-                cc.cmp(ctx.lhs_data, 0);
-                cc.je(label_end);
+                cc.test(ctx.lhs_data, ctx.lhs_data);
+                cc.jz(label_end);
 
                 perform_block_pass(ctx, body);
 
@@ -159,7 +159,33 @@ namespace rebar {
 
                 perform_expression_pass(ctx, decl.m_conditional, a_side);
 
-                cc.cmp(out_data, 0);
+                cc.test(out_data, out_data);
+                cc.jnz(label_body);
+
+                cc.bind(label_end);
+
+                ctx.loop_stack.pop_back();
+
+                break;
+            }
+            case node::type::do_declaration: {
+                const auto decl = a_node.get_do_declaration();
+
+                auto label_begin = cc.newLabel();
+                auto label_end = cc.newLabel();
+                auto label_body = cc.newLabel();
+
+                ctx.loop_stack.emplace_back(std::in_place, label_begin, label_end);
+
+                cc.bind(label_body);
+
+                perform_block_pass(ctx, decl.m_body);
+
+                perform_expression_pass(ctx, decl.m_conditional, a_side);
+
+                cc.bind(label_begin);
+
+                cc.test(out_data, out_data);
                 cc.jne(label_body);
 
                 cc.bind(label_end);
@@ -168,8 +194,6 @@ namespace rebar {
 
                 break;
             }
-            case node::type::do_declaration:
-                break;
             case node::type::switch_declaration:
                 break;
             case node::type::class_declaration:
