@@ -770,9 +770,9 @@ namespace rebar {
                     return string + "}; ";
                 }
                 case type::break_statement:
-                    return "BREAK; ";
+                    return std::string("BREAK ") + std::to_string(get_break_statement()) + "; ";
                 case type::continue_statement:
-                    return "CONTINUE; ";
+                    return std::string("CONTINUE ") + std::to_string(get_continue_statement()) + "; ";
             }
 
             return "";
@@ -2046,7 +2046,7 @@ namespace rebar {
                                 tokens,
                                 source_positions,
                                 node::type::break_statement,
-                                static_cast<size_t>(std::min(break_index, static_cast<integer>(1)) - 1)
+                                static_cast<size_t>(std::max(break_index, static_cast<integer>(1)) - 1)
                             );
                         }
                     } else if (tokens.size() == 3 && tokens[0] == separator::selector_open) {
@@ -2057,7 +2057,7 @@ namespace rebar {
                                 tokens,
                                 source_positions,
                                 node::type::break_statement,
-                                static_cast<size_t>(std::min(break_index, static_cast<integer>(0)))
+                                static_cast<size_t>(std::max(break_index, static_cast<integer>(0)))
                             );
                         } else {
                             // TODO: Throw invalid break operand error.
@@ -2092,7 +2092,7 @@ namespace rebar {
                                     tokens,
                                     source_positions,
                                     node::type::continue_statement,
-                                    static_cast<size_t>(std::min(continue_index, static_cast<integer>(1)) - 1)
+                                    static_cast<size_t>(std::max(continue_index, static_cast<integer>(1)) - 1)
                             );
                         }
                     } else if (tokens.size() == 3 && tokens[0] == separator::selector_open) {
@@ -2103,7 +2103,7 @@ namespace rebar {
                                 tokens,
                                 source_positions,
                                 node::type::break_statement,
-                                static_cast<size_t>(std::min(continue_index, static_cast<integer>(0)))
+                                static_cast<size_t>(std::max(continue_index, static_cast<integer>(0)))
                             );
                         } else {
                             // TODO: Throw invalid break operand error.
