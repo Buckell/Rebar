@@ -357,7 +357,7 @@ namespace rebar {
                 break;
             }
             case node::type::selector: {
-                const auto& arr = a_node.get_selector();
+                const auto &arr = a_node.get_selector();
 
                 if (arr.count() > 1) {
                     break;
@@ -365,11 +365,11 @@ namespace rebar {
 
                 REBAR_CC_DEBUG("Begin intermediate array.");
 
-                cc.mov(ctx.identifier, 1);
+                cc.mov(ctx.identifier, arr.count() ? 1 : 0);
 
                 REBAR_CODE_GENERATION_GUARD({
-                    asmjit::InvokeNode* array_invoke;
-                    cc.invoke(&array_invoke, _ext_allocate_array, asmjit::FuncSignatureT<void, object*, size_t>(platform_call_convention));
+                    asmjit::InvokeNode *array_invoke;
+                    cc.invoke(&array_invoke, _ext_allocate_array, asmjit::FuncSignatureT<void, object *, size_t>(platform_call_convention));
                     array_invoke->setArg(0, ctx.return_object);
                     array_invoke->setArg(1, ctx.identifier);
                 })
@@ -380,32 +380,34 @@ namespace rebar {
 
                 // TODO: Optimize: Eliminate unnecessary push/pops.
 
-                ctx.push_identifier();
+                if (arr.count() > 0) {
+                    ctx.push_identifier();
 
-                perform_node_pass(ctx, arr.get_operand(0), output_side::righthand);
+                    perform_node_pass(ctx, arr.get_operand(0), output_side::righthand);
 
-                ctx.pop_identifier();
+                    ctx.pop_identifier();
 
-                cc.mov(asmjit::x86::qword_ptr(ctx.return_object), type::array);
-                cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), ctx.identifier);
+                    cc.mov(asmjit::x86::qword_ptr(ctx.return_object), type::array);
+                    cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), ctx.identifier);
 
-                cc.mov(ctx.lhs_type, type::integer);
-                cc.mov(ctx.lhs_data, 0);
+                    cc.mov(ctx.lhs_type, type::integer);
+                    cc.mov(ctx.lhs_data, 0);
 
-                REBAR_CODE_GENERATION_GUARD({
-                    asmjit::InvokeNode* index_invoke;
-                    cc.invoke(&index_invoke, _ext_object_index, asmjit::FuncSignatureT<object*, environment*, object*, type, size_t>(platform_call_convention));
-                    index_invoke->setArg(0, ctx.environment);
-                    index_invoke->setArg(1, ctx.return_object);
-                    index_invoke->setArg(2, ctx.lhs_type);
-                    index_invoke->setArg(3, ctx.lhs_data);
-                    index_invoke->setRet(0, ctx.lhs_data);
-                })
+                    REBAR_CODE_GENERATION_GUARD({
+                        asmjit::InvokeNode *index_invoke;
+                        cc.invoke(&index_invoke, _ext_object_index, asmjit::FuncSignatureT<object *, environment *, object *, type, size_t>(platform_call_convention));
+                        index_invoke->setArg(0, ctx.environment);
+                        index_invoke->setArg(1, ctx.return_object);
+                        index_invoke->setArg(2, ctx.lhs_type);
+                        index_invoke->setArg(3, ctx.lhs_data);
+                        index_invoke->setRet(0, ctx.lhs_data);
+                    })
 
-                cc.mov(asmjit::x86::qword_ptr(ctx.lhs_data), ctx.rhs_type);
-                cc.mov(asmjit::x86::qword_ptr(ctx.lhs_data, object_data_offset), ctx.rhs_data);
+                    cc.mov(asmjit::x86::qword_ptr(ctx.lhs_data), ctx.rhs_type);
+                    cc.mov(asmjit::x86::qword_ptr(ctx.lhs_data, object_data_offset), ctx.rhs_data);
 
-                pass.set_flags(pass_flag::clobber_return | pass_flag::clobber_left);
+                    pass.set_flags(pass_flag::clobber_return | pass_flag::clobber_left);
+                }
 
                 cc.mov(out_type, type::array);
                 cc.mov(out_data, ctx.identifier);
