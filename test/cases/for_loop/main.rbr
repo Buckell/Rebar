@@ -1,0 +1,23 @@
+local array = [];
+
+for (local i = 0; i < 10; ++i) {
+    array += i;
+}
+
+PrintLn(array);
+
+for (local a = 0; a < 3; ++a) {
+    for (local b = 0; b < 3; ++b) {
+        for (local c = 0; c < 3; ++c) {
+            PrintLn(a, b, c);
+
+            if (a == 1 && b == 1 && c == 0) {
+                continue 2;
+            }
+
+            if (a == 2 && b == 1 && c == 1) {
+                break 2;
+            }
+        }
+    }
+}
