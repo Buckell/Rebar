@@ -107,8 +107,87 @@ namespace rebar {
 
                 break;
             }
-            case node::type::for_declaration:
+            case node::type::for_declaration: {
+                const auto& decl = a_node.get_for_declaration();
+
+                // SYNCHRONIZE CHANGES WITH PERFORM_BLOCK_PASS
+
+                function_context::pass_control for_pass(ctx);
+
+                auto& cc = ctx.assembler;
+                ctx.local_variable_list.emplace_back();
+                ctx.constant_tables.emplace_back();
+
+                ctx.block_local_offsets.emplace_back(0);
+
+                ctx.if_stack.push_back(std::nullopt);
+
+                const auto& label_begin = cc.newLabel();
+                const auto& label_end = cc.newLabel();
+                const auto& label_body = cc.newLabel();
+
+                ctx.loop_stack.emplace_back(std::in_place, label_begin, label_end);
+
+                const auto& body = decl.m_body;
+
+                perform_expression_pass(ctx, decl.m_initialization);
+
+                cc.jmp(label_body);
+
+                cc.bind(label_begin);
+
+                perform_expression_pass(ctx, decl.m_iteration);
+
+                cc.bind(label_body);
+
+                perform_expression_pass(ctx, decl.m_conditional, a_side);
+
+                cc.test(out_data, out_data);
+                cc.jz(label_end);
+
+                for (size_t i = 0; i < body.size(); ++i) {
+                    perform_node_pass(ctx, body[i], output_side::lefthand, i + 1 < body.size() ? std::optional<const node*>(&body[i + 1]) : std::nullopt);
+                }
+
+                cc.jmp(label_begin);
+
+                cc.bind(label_end);
+
+                ctx.loop_stack.pop_back();
+
+                auto& locals_table = ctx.local_variable_list.back();
+
+                if (!locals_table.empty()) {
+                    auto block_local_stack_offset = ctx.block_local_offsets.back();
+
+                    ctx.local_stack_position -= block_local_stack_offset;
+
+                    REBAR_CC_DEBUG("Perform garbage collection. (Offset: %d - %d Objects)", ctx.local_stack_position, locals_table.size());
+
+                    // Dereference and garbage collect locals.
+                    asmjit::x86::Mem locals_stack(ctx.locals_stack);
+                    locals_stack.addOffset(ctx.local_stack_position * sizeof(object));
+
+                    cc.lea(ctx.identifier, locals_stack);
+                    cc.mov(ctx.lhs_type, locals_table.size());
+
+                    REBAR_CODE_GENERATION_GUARD({
+                        asmjit::InvokeNode* invoke_node;
+                        cc.invoke(&invoke_node, object::block_dereference, asmjit::FuncSignatureT<void, object*, size_t>(platform_call_convention));
+                        invoke_node->setArg(0, ctx.identifier);
+                        invoke_node->setArg(1, ctx.lhs_type);
+                    })
+
+                    pass.set_flags(pass_flag::clobber_identifier | pass_flag::clobber_left);
+                }
+
+                ctx.if_stack.pop_back();
+                ctx.block_local_offsets.pop_back();
+                ctx.local_variable_list.pop_back();
+                ctx.constant_tables.pop_back();
+
                 break;
+            }
             case node::type::function_declaration: {
                 const auto& decl = a_node.get_function_declaration();
 

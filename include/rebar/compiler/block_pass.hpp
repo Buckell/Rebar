@@ -11,6 +11,8 @@
 
 namespace rebar {
     void compiler::perform_block_pass(function_context& ctx, const node::block& a_block) {
+        // SYNCHRONIZE CHANGES WITH PERFORM_NODE_PASS - CASE FOR_DECLARATION
+
         function_context::pass_control pass(ctx);
 
         auto& cc = ctx.assembler;
