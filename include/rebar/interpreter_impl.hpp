@@ -75,8 +75,11 @@ namespace rebar {
             } else if (a_node.is_selector()) {
                 const auto& sel = a_node.get_selector();
 
-                array arr(1); // Size = 1.
-                arr.push_back(evaluate_expression(sel));
+                array arr(0);
+
+                if (sel.count()) {
+                    arr.push_back(evaluate_expression(sel));
+                }
 
                 return arr;
             } else if (a_node.is_immediate_array()) {
