@@ -37,7 +37,9 @@ namespace rebar {
             immediate_table,
             break_statement,
             continue_statement,
-            immediate_array
+            immediate_array,
+            throw_statement,
+            try_catch_block
         };
 
         struct abstract_syntax_tree {
@@ -253,10 +255,37 @@ namespace rebar {
             immediate_table(immediate_table&& a_decl) noexcept = default;
         };
 
+        struct throw_statement {
+            std::string_view m_exception_type;
+            std::optional<group> m_expression;
+
+            throw_statement(const std::string_view a_exception_type) noexcept
+                    : m_exception_type(a_exception_type), m_expression(std::nullopt) {}
+
+            throw_statement(const std::string_view a_exception_type, group a_expression) noexcept
+                    : m_exception_type(a_exception_type), m_expression(std::move(a_expression)) {}
+
+            throw_statement(const throw_statement& a_decl) = default;
+            throw_statement(throw_statement&& a_decl) noexcept = default;
+        };
+
+        struct try_catch_block {
+            block m_body;
+            block m_catch;
+            std::string_view m_exception_identifier;
+            std::vector<std::string_view> m_exception_types;
+
+            try_catch_block(block a_body, block a_catch, std::string_view a_exception_identifier, std::vector<std::string_view> a_exception_types) noexcept
+                    : m_body(std::move(a_body)), m_catch(std::move(a_catch)), m_exception_identifier(a_exception_identifier), m_exception_types(std::move(a_exception_types)) {}
+
+            try_catch_block(const try_catch_block& a_decl) = default;
+            try_catch_block(try_catch_block&& a_decl) noexcept = default;
+        };
+
         using break_statement = size_t;
         using continue_statement = size_t;
 
-        using data_type = std::variant<std::nullptr_t, size_t, const token*, expression, std::vector<node>, if_declaration, for_declaration, function_declaration, switch_declaration, class_declaration, immediate_table>;
+        using data_type = std::variant<std::nullptr_t, size_t, const token*, expression, std::vector<node>, if_declaration, for_declaration, function_declaration, switch_declaration, class_declaration, immediate_table, throw_statement, try_catch_block>;
 
         type m_type;
         data_type m_data;
@@ -356,6 +385,14 @@ namespace rebar {
 
         [[nodiscard]] bool is_immediate_array() const noexcept {
             return m_type == type::immediate_array;
+        }
+
+        [[nodiscard]] bool is_throw_statement() const noexcept {
+            return m_type == type::throw_statement;
+        }
+
+        [[nodiscard]] bool is_try_catch_block() const noexcept {
+            return m_type == type::try_catch_block;
         }
 
         [[nodiscard]] const token& get_token() const noexcept {
@@ -512,6 +549,22 @@ namespace rebar {
 
         [[nodiscard]] const continue_statement& get_continue_statement() const noexcept {
             return std::get<continue_statement>(m_data);
+        }
+
+        [[nodiscard]] throw_statement& get_throw_statement() noexcept {
+            return std::get<throw_statement>(m_data);
+        }
+
+        [[nodiscard]] const throw_statement& get_throw_statement() const noexcept {
+            return std::get<throw_statement>(m_data);
+        }
+
+        [[nodiscard]] try_catch_block& get_try_catch_block() noexcept {
+            return std::get<try_catch_block>(m_data);
+        }
+
+        [[nodiscard]] const try_catch_block& get_try_catch_block() const noexcept {
+            return std::get<try_catch_block>(m_data);
         }
 
         [[nodiscard]] std::string to_string() const noexcept {
@@ -773,6 +826,53 @@ namespace rebar {
                     return std::string("BREAK ") + std::to_string(get_break_statement()) + "; ";
                 case type::continue_statement:
                     return std::string("CONTINUE ") + std::to_string(get_continue_statement()) + "; ";
+                case type::throw_statement: {
+                    std::string string{ "THROW EXCEPTION (" };
+
+                    const auto& stmt = get_throw_statement();
+
+                    string += stmt.m_exception_type;
+
+                    if (stmt.m_expression.has_value()) {
+                        string += ") { ";
+
+                        string += stmt.m_expression->to_string();
+
+                        return string + "}; ";
+                    } else {
+                        return string + "); ";
+                    }
+                }
+                case type::try_catch_block: {
+                    std::string string{ "TRY-CATCH BLOCK { TRY { " };
+
+                    const auto& block = get_try_catch_block();
+
+                    for (const auto &n : block.m_body) {
+                        string += n.to_string();
+                    }
+
+                    string += "}; CATCH (";
+                    string += block.m_exception_identifier;
+
+                    if (!block.m_exception_types.empty()) {
+                        string += " :";
+
+                        for (const auto type : block.m_exception_types) {
+                            string += ' ';
+                            string += type;
+                        }
+                    }
+
+                    string += ") { ";
+
+                    for (const auto &n : block.m_catch) {
+                        string += n.to_string();
+                    }
+
+                    return string + "}; ";
+                }
+
             }
 
             return "";
@@ -2113,6 +2213,125 @@ namespace rebar {
                     }
 
                     i += std::distance(end_statement_find, a_tokens.begin() + i);
+                }
+            } else if (tok == keyword::throw_statement) {
+                if (a_tokens[i + 1].is_identifier()) {
+                    if (a_tokens[i + 2] == separator::end_statement) {
+                        nodes.emplace_back(
+                            a_tokens.subspan(i, 3),
+                            a_source_positions.subspan(i, 3),
+                            node::type::throw_statement,
+                            node::throw_statement(a_tokens[i + 1].get_identifier())
+                        );
+
+                        i += 2;
+                    } else if (a_tokens[i + 2] == separator::group_open) {
+                        span<token>::iterator end_group_find = find_next(a_tokens.subspan(i + 3), separator::group_close, separator::group_open, separator::group_close);
+
+                        span<token> argument_tokens(a_tokens.begin() + i + 3, end_group_find);
+                        span<source_position> argument_source_positions = a_source_positions.subspan(i + 3, argument_tokens.size());
+
+                        if (*(end_group_find + 1) == separator::end_statement) {
+                            span<token> statement_tokens(a_tokens.begin() + i, end_group_find + 2);
+                            span<source_position> statement_source_positions = a_source_positions.subspan(i, statement_tokens.size());
+
+                            nodes.emplace_back(
+                                statement_tokens,
+                                statement_source_positions,
+                                node::type::throw_statement,
+                                node::throw_statement(a_tokens[i + 1].get_identifier(), parse_group(argument_tokens, argument_source_positions))
+                            );
+
+                            i += std::distance(statement_tokens.end() - 1, a_tokens.begin() + i);
+                        } else {
+                            // TODO: Throw incomplete throw statement syntax exception.
+                        }
+                    } else {
+                        // TODO: Throw malformed throw argument syntax exception.
+                    }
+                } else {
+                    // TODO: Throw missing exception type exception.
+                }
+            } else if (tok == keyword::try_clause) {
+                if (a_tokens[i + 1] != separator::scope_open) {
+                    // TODO: Throw malformed try clause.
+                }
+
+                span<token>::iterator end_try_scope_find = find_next(a_tokens.subspan(i + 2), separator::scope_close, separator::scope_open, separator::scope_close);
+
+                if (end_try_scope_find == a_tokens.cend() || *(end_try_scope_find + 1) != keyword::catch_clause || *(end_try_scope_find + 2) != separator::group_open) {
+                    // TODO: Throw missing/malformed catch clause syntax exception.
+                }
+
+                span<token>::iterator end_group_find = find_next(span<token>(end_try_scope_find + 3, a_tokens.end()), separator::group_close, separator::group_open, separator::group_close);
+
+                if (end_group_find == a_tokens.cend() || *(end_group_find + 1) != separator::scope_open) {
+                    // TODO: Throw missing/malformed catch clause syntax exception.
+                }
+
+                span<token>::iterator end_catch_scope_find = find_next(span<token>(end_group_find + 2, a_tokens.end()), separator::scope_close, separator::scope_open, separator::scope_close);
+
+                if (end_catch_scope_find == a_tokens.cend()) {
+                    // TODO: Throw missing/malformed catch clause syntax exception.
+                }
+
+                span<token> try_clause_block_tokens(a_tokens.begin() + i + 2, end_try_scope_find);
+                span<source_position> try_clause_block_source_positions = a_source_positions.subspan(i + 2, try_clause_block_tokens.size());
+
+                span<token> exception_catch_group_tokens(end_try_scope_find + 3, end_group_find);
+                span<source_position> exception_catch_group_source_positions(try_clause_block_source_positions.end() + 3, try_clause_block_source_positions.end() + 3 + exception_catch_group_tokens.size());
+
+                span<token> catch_clause_block_tokens(end_group_find + 2, end_catch_scope_find);
+                span<source_position> catch_clause_block_source_positions(exception_catch_group_source_positions.end() + 2, exception_catch_group_source_positions.end() + 2 + catch_clause_block_tokens.size());
+
+                span<token> statement_tokens(a_tokens.begin() + i, end_catch_scope_find + 1);
+                span<source_position> statement_source_positions = a_source_positions.subspan(i, statement_tokens.size());
+
+                if (exception_catch_group_tokens.size() == 1 && exception_catch_group_tokens[0].is_identifier()) {
+                    nodes.emplace_back(
+                        statement_tokens,
+                        statement_source_positions,
+                        node::type::try_catch_block,
+                        node::try_catch_block(
+                            parse_block(a_plaintext, try_clause_block_tokens, try_clause_block_source_positions),
+                            parse_block(a_plaintext, catch_clause_block_tokens, catch_clause_block_source_positions),
+                            exception_catch_group_tokens[0].get_identifier(),
+                            std::vector<std::string_view>()
+                        )
+                    );
+
+                    i += std::distance(statement_tokens.end() - 1, a_tokens.begin() + i);
+                } else if (exception_catch_group_tokens.size() >= 3 && exception_catch_group_tokens[0].is_identifier() && exception_catch_group_tokens[1] == separator::seek) {
+                    std::vector<std::string_view> exception_types;
+
+                    span<token> exception_types_tokens = exception_catch_group_tokens.subspan(2);
+
+                    for (size_t i = 0; i < exception_types_tokens.size(); ++i) {
+                        if (exception_types_tokens[i].is_identifier()) {
+                            if (i + 1 == exception_types_tokens.size()) {
+                                exception_types.push_back(exception_types_tokens[i].get_identifier());
+                            } else if (exception_types_tokens[i + 1] == separator::list) {
+                                exception_types.push_back(exception_types_tokens[i].get_identifier());
+                                ++i;
+                            } else {
+                                // TODO: Throw invalid exception types list syntax error.
+                            }
+                        }
+                    }
+
+                    nodes.emplace_back(
+                        statement_tokens,
+                        statement_source_positions,
+                        node::type::try_catch_block,
+                        node::try_catch_block(
+                            parse_block(a_plaintext, try_clause_block_tokens, try_clause_block_source_positions),
+                            parse_block(a_plaintext, catch_clause_block_tokens, catch_clause_block_source_positions),
+                            exception_catch_group_tokens[0].get_identifier(),
+                            exception_types
+                        )
+                    );
+
+                    i += std::distance(statement_tokens.end() - 1, a_tokens.begin() + i);
                 }
             } else if (tok == keyword::local) {
                 // Local definition declared.

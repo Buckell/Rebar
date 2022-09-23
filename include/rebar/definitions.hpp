@@ -180,7 +180,10 @@ namespace rebar {
         function_return,
         literal_true,
         literal_false,
-        literal_null
+        literal_null,
+        throw_statement,
+        try_clause,
+        catch_clause
     };
 
     [[nodiscard]] constexpr std::string_view keyword_to_string(const keyword a_keyword) noexcept {
@@ -202,10 +205,13 @@ namespace rebar {
                 "BREAK"sv,
                 "CONTINUE"sv,
                 "CLASS"sv,
-                "FUNCTION RETURN"sv,
+                "RETURN"sv,
                 "TRUE"sv,
                 "FALSE"sv,
-                "NULL"sv
+                "NULL"sv,
+                "THROW"sv,
+                "TRY"sv,
+                "CATCH"sv
         };
 
         return keyword_strings[static_cast<size_t>(a_keyword)];

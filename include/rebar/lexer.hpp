@@ -160,10 +160,13 @@ namespace rebar {
                 { "break",    { false, { token::type::keyword, keyword::break_statement } } },
                 { "continue", { false, { token::type::keyword, keyword::continue_statement } } },
                 { "class",    { false, { token::type::keyword, keyword::class_declaration } } },
-                { "return",   { false, { token::type::keyword, keyword::function_return }  }},
-                { "true",     { false, { token::type::keyword, keyword::literal_true }  }},
-                { "false",    { false, { token::type::keyword, keyword::literal_false }  }},
-                { "null",     { false, { token::type::keyword, keyword::literal_null }  }}
+                { "return",   { false, { token::type::keyword, keyword::function_return } } },
+                { "true",     { false, { token::type::keyword, keyword::literal_true } } },
+                { "false",    { false, { token::type::keyword, keyword::literal_false } } },
+                { "null",     { false, { token::type::keyword, keyword::literal_null } } },
+                { "throw",    { false, { token::type::keyword, keyword::throw_statement } } },
+                { "try",      { false, { token::type::keyword, keyword::try_clause } } },
+                { "catch",    { false, { token::type::keyword, keyword::catch_clause } } }
             }};
         }
     };
