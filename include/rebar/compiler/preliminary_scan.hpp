@@ -94,6 +94,13 @@ namespace rebar {
 
                         break;
                     }
+                    case node::type::try_catch_block: {
+                        const auto& decl = node.get_try_catch_block();
+                        block_pass(decl.m_catch, a_current_count + current_count);
+                        block_pass(decl.m_body, a_current_count + current_count);
+                        ++current_count;
+                        break;
+                    }
                     default:
                         break;
                 }

@@ -13,6 +13,7 @@
 #include "interpreter.hpp"
 #include "table.hpp"
 #include "native_object_impl.hpp"
+#include "compiler.hpp"
 
 #include <xxhash.hpp>
 #include <skarupke_map.hpp>
@@ -24,7 +25,7 @@ namespace rebar {
     template <typename t_provider>
     inline constexpr use_provider_t<t_provider> use_provider{};
 
-    using default_provider = interpreter;
+    using default_provider = compiler;
 
     using namespace std::literals::string_literals;
 
@@ -75,11 +76,14 @@ namespace rebar {
         std::ostream* m_stream_log = &std::clog;
         std::ostream* m_stream_error = &std::cerr;
 
+        string m_runtime_exception_type;
+        object m_runtime_exception_object;
+
     public:
-        environment() noexcept : m_provider(std::make_unique<default_provider>(*this)) {}
+        environment() noexcept : m_provider(std::make_unique<default_provider>(*this)), m_runtime_exception_type(str("None")) {}
 
         template <typename t_provider>
-        explicit environment(const use_provider_t<t_provider>) noexcept : m_provider(std::make_unique<t_provider>(*this)) {};
+        explicit environment(const use_provider_t<t_provider>) noexcept : m_provider(std::make_unique<t_provider>(*this)), m_runtime_exception_type(str("None")) {};
 
         environment(const environment&) = delete;
         environment(environment&&) = delete;
@@ -104,6 +108,40 @@ namespace rebar {
 
         [[nodiscard]] inline table& get_array_virtual_table() noexcept {
             return m_array_virtual_table;
+        }
+
+        void set_runtime_exception_information(string a_exception_type, object a_exception_object) {
+            m_runtime_exception_type = a_exception_type;
+            m_runtime_exception_object = std::move(a_exception_object);
+        }
+
+        [[noreturn]] void throw_exception(const std::string_view a_exception_type, object a_exception_object = null) {
+            set_runtime_exception_information(str(a_exception_type), std::move(a_exception_object));
+            m_provider->throw_exception();
+        }
+
+        [[noreturn]] void throw_exception(const std::string_view a_exception_type, const std::string_view a_exception_message) {
+            table* tbl = new table;
+            tbl->emplace(str("message"), str(a_exception_message));
+            set_runtime_exception_information(str(a_exception_type), tbl);
+
+            m_provider->throw_exception();
+        }
+
+        [[nodiscard]] const string& get_exception_type() const noexcept {
+            return m_runtime_exception_type;
+        }
+
+        [[nodiscard]] string* get_exception_type_pointer() noexcept {
+            return &m_runtime_exception_type;
+        }
+
+        [[nodiscard]] std::string_view get_exception_type_string() const noexcept {
+            return m_runtime_exception_type.to_string_view();
+        }
+
+        [[nodiscard]] const object& get_exception_object() const noexcept {
+            return m_runtime_exception_object;
         }
 
         virtual_table& register_native_class(const object a_identifier, virtual_table a_table = {}) {

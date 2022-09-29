@@ -76,6 +76,10 @@ namespace rebar {
             return func->internal_call();
         }
 
+        [[noreturn]] void throw_exception() override {
+            throw runtime_exception(m_environment);
+        }
+
     private:
         environment& m_environment;
         size_t m_argument_stack_position = 0;

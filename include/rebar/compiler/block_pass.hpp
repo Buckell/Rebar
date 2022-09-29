@@ -10,21 +10,34 @@
 #include "macro.hpp"
 
 namespace rebar {
-    void compiler::perform_block_pass(function_context& ctx, const node::block& a_block) {
+    template <typename t_pre_pass_function, typename t_post_pass_function>
+    void compiler::perform_block_pass(function_context& ctx, const node::block& a_block, t_pre_pass_function a_pre_pass, t_post_pass_function a_post_pass) {
         // SYNCHRONIZE CHANGES WITH PERFORM_NODE_PASS - CASE FOR_DECLARATION
+
+        constexpr bool using_pre_pass_function = !std::is_same_v<t_pre_pass_function, std::nullptr_t> && std::is_convertible_v<t_pre_pass_function, std::function<void (function_context&, function_context::pass_control&)>>;
+        constexpr bool using_post_pass_function = !std::is_same_v<t_post_pass_function, std::nullptr_t> && std::is_convertible_v<t_post_pass_function, std::function<void (function_context&, function_context::pass_control&)>>;
 
         function_context::pass_control pass(ctx);
 
         auto& cc = ctx.assembler;
+
         ctx.local_variable_list.emplace_back();
         ctx.constant_tables.emplace_back();
 
         ctx.block_local_offsets.emplace_back(0);
 
-        ctx.if_stack.push_back(std::nullopt);
+        ctx.if_stack.emplace_back(std::nullopt);
+
+        if constexpr (using_pre_pass_function) {
+            a_pre_pass(ctx, pass);
+        }
 
         for (size_t i = 0; i < a_block.size(); ++i) {
             perform_node_pass(ctx, a_block[i], output_side::lefthand, i + 1 < a_block.size() ? std::optional<const node*>(&a_block[i + 1]) : std::nullopt);
+        }
+
+        if constexpr (using_post_pass_function) {
+            a_post_pass(ctx, pass);
         }
 
         auto& locals_table = ctx.local_variable_list.back();

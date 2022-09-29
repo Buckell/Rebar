@@ -8,12 +8,17 @@
 #include "macro.hpp"
 
 #include "../compiler.hpp"
+#include "../environment.hpp"
+
+#include "object_ext.hpp"
+#include "ext.hpp"
 
 namespace rebar {
     void compiler::perform_node_pass(function_context& ctx, const node& a_node, output_side a_side, std::optional<const node*> a_next) {
         function_context::pass_control pass(ctx);
 
         auto [out_type, out_data] = ctx.expression_registers(a_side);
+        auto [opp_out_type, opp_out_data] = ctx.expression_registers(!a_side);
         auto& cc = ctx.assembler;
 
         switch (a_node.m_type) {
@@ -115,12 +120,13 @@ namespace rebar {
                 function_context::pass_control for_pass(ctx);
 
                 auto& cc = ctx.assembler;
+
                 ctx.local_variable_list.emplace_back();
                 ctx.constant_tables.emplace_back();
 
                 ctx.block_local_offsets.emplace_back(0);
 
-                ctx.if_stack.push_back(std::nullopt);
+                ctx.if_stack.emplace_back(std::nullopt);
 
                 const auto& label_begin = cc.newLabel();
                 const auto& label_end = cc.newLabel();
@@ -304,6 +310,11 @@ namespace rebar {
                     })
                 }
 
+                if (pass.flags_set(pass_flag::restore_handler_position)) {
+                    ctx.efficient_load_integer(ctx.identifier, reinterpret_cast<size_t>(&m_exception_handler_stack_position));
+                    cc.dec(asmjit::x86::qword_ptr(ctx.identifier));
+                }
+
                 cc.ret();
 
                 pass.set_flags(pass_flag::clobber_return);
@@ -474,7 +485,7 @@ namespace rebar {
 
                     REBAR_CODE_GENERATION_GUARD({
                         asmjit::InvokeNode *index_invoke;
-                        cc.invoke(&index_invoke, _ext_object_index, asmjit::FuncSignatureT<object *, environment *, object *, type, size_t>(platform_call_convention));
+                        cc.invoke(&index_invoke, _ext_object_index, asmjit::FuncSignatureT<object*, environment*, object*, type, size_t>(platform_call_convention));
                         index_invoke->setArg(0, ctx.environment);
                         index_invoke->setArg(1, ctx.return_object);
                         index_invoke->setArg(2, ctx.lhs_type);
@@ -492,6 +503,167 @@ namespace rebar {
                 cc.mov(out_data, ctx.identifier);
 
                 pass.set_flags(side_clobber_flag(a_side) | pass_flag::dynamic_expression | pass_flag::clobber_identifier);
+
+                break;
+            }
+            case node::type::throw_statement: {
+                const auto& stmt = a_node.get_throw_statement();
+
+                if (ctx.local_stack_position > 0) {
+                    // Dereference and garbage collect locals.
+                    asmjit::x86::Mem locals_stack(ctx.locals_stack);
+
+                    REBAR_CC_DEBUG("Perform garbage collection. (%d Objects)", ctx.local_stack_position);
+
+                    cc.lea(ctx.identifier, locals_stack);
+                    cc.mov(ctx.lhs_type, ctx.local_stack_position);
+
+                    pass.set_flags(pass_flag::clobber_left | pass_flag::clobber_identifier);
+
+                    REBAR_CODE_GENERATION_GUARD({
+                        asmjit::InvokeNode* invoke_node;
+                        cc.invoke(&invoke_node, object::block_dereference, asmjit::FuncSignatureT<void, object*, size_t>(platform_call_convention));
+                        invoke_node->setArg(0, ctx.identifier);
+                        invoke_node->setArg(1, ctx.lhs_type);
+                    })
+                }
+
+                if (stmt.m_expression.has_value()) {
+                    perform_expression_pass(ctx, *stmt.m_expression, a_side);
+                    cc.mov(asmjit::x86::qword_ptr(ctx.return_object), out_type);
+                    cc.mov(asmjit::x86::qword_ptr(ctx.return_object, object_data_offset), out_data);
+                } else {
+                    cc.pxor(ctx.transfer, ctx.transfer);
+                    cc.movdqa(asmjit::x86::dqword_ptr(ctx.return_object), ctx.transfer);
+                }
+
+                if (pass.flags_set(pass_flag::restore_handler_position)) {
+                    ctx.efficient_load_integer(ctx.identifier, reinterpret_cast<size_t>(&m_exception_handler_stack_position));
+                    cc.dec(asmjit::x86::qword_ptr(ctx.identifier));
+                }
+
+                ctx.efficient_load_integer(ctx.identifier, reinterpret_cast<size_t>(ctx.source.emplace_string_dependency(stmt.m_exception_type).data()));
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* invoke_node;
+                    cc.invoke(&invoke_node, ithrow, asmjit::FuncSignatureT<void, rebar::environment*, object*, size_t>(platform_call_convention));
+                    invoke_node->setArg(0, ctx.environment);
+                    invoke_node->setArg(1, ctx.return_object);
+                    invoke_node->setArg(2, ctx.identifier);
+                })
+
+                break;
+            }
+            case node::type::try_catch_block: {
+                const auto& decl = a_node.get_try_catch_block();
+
+                const auto label_catch_block = cc.newLabel();
+                const auto label_catch_main_block = cc.newLabel();
+                const auto label_catch_forward_block = cc.newLabel();
+                const auto label_end = cc.newLabel();
+
+                // Load exception handler stack pointer and position pointer.
+                ctx.efficient_load_integer(out_type, reinterpret_cast<size_t>(m_exception_handler_stack.data()));
+                ctx.efficient_load_integer(out_data, reinterpret_cast<size_t>(&m_exception_handler_stack_position));
+
+                // Calculate handler offset.
+                cc.mov(opp_out_type, asmjit::x86::qword_ptr(out_data));
+                cc.imul(opp_out_type, sizeof(compiler_implementation::exception_handler_data));
+                cc.add(out_type, opp_out_type);
+
+                // Increment handler index.
+                cc.inc(asmjit::x86::qword_ptr(out_data));
+
+                // Set function stack entry pointer (start position).
+                ctx.efficient_load_integer(out_data, reinterpret_cast<size_t>(&m_function_stack));
+                cc.mov(out_data, asmjit::x86::qword_ptr(out_data));
+                cc.mov(asmjit::x86::qword_ptr(out_type, offsetof(compiler_implementation::exception_handler_data, function_stack_position)), out_data);
+
+                // Load jump buffer.
+                cc.mov(opp_out_type, asmjit::x86::qword_ptr(out_type, offsetof(compiler_implementation::exception_handler_data, buffer)));
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* invoke;
+                    cc.invoke(&invoke, std::setjmp, asmjit::FuncSignatureT<int, void*>(platform_call_convention));
+                    invoke->setArg(0, opp_out_type);
+                    invoke->setRet(0, opp_out_type);
+                })
+
+                cc.test(opp_out_type, opp_out_type);
+                cc.jnz(label_catch_block);
+
+                ctx.target_flags(pass_flag::restore_handler_position);
+                perform_block_pass(ctx, decl.m_body);
+
+                cc.jmp(label_end);
+
+                cc.bind(label_catch_block);
+
+                // Restore handler position.
+                ctx.efficient_load_integer(ctx.identifier, reinterpret_cast<size_t>(&m_exception_handler_stack_position));
+                cc.dec(asmjit::x86::qword_ptr(ctx.identifier));
+
+                if (!decl.m_exception_types.empty()) {
+                    ctx.efficient_load_integer(ctx.identifier, reinterpret_cast<size_t>(m_environment.get_exception_type_pointer()));
+                    cc.mov(ctx.identifier, asmjit::x86::qword_ptr(ctx.identifier));
+
+                    for (const auto& type : decl.m_exception_types) {
+                        const auto& str = ctx.source.emplace_string_dependency(type);
+
+                        ctx.efficient_load_integer(out_type, reinterpret_cast<size_t>(str.data()));
+                        cc.cmp(ctx.identifier, out_type);
+                        cc.je(label_catch_main_block);
+                    }
+
+                    cc.jmp(label_catch_forward_block);
+                }
+
+                cc.bind(label_catch_main_block);
+
+                environment& env = m_environment;
+                perform_block_pass(ctx, decl.m_catch, [&decl, &env] (function_context& ctx, function_context::pass_control& pass) {
+                    auto& cc = ctx.assembler;
+                    auto [ltype, ldata] = ctx.expression_registers(output_side::lefthand);
+                    auto& local_table = ctx.local_variable_list.back();
+
+                    if (!pass.flags_set(pass_flag::void_code_generation) && local_table.find(decl.m_exception_identifier) == local_table.cend()) {
+                        local_table.emplace(decl.m_exception_identifier, ctx.local_stack_position);
+
+                        ctx.efficient_load_integer(ctx.identifier, reinterpret_cast<size_t>(&env.get_exception_object()));
+                        cc.mov(ltype, asmjit::x86::qword_ptr(ctx.identifier));
+                        cc.mov(ldata, asmjit::x86::qword_ptr(ctx.identifier, object_data_offset));
+
+                        asmjit::x86::Mem locals_stack(ctx.locals_stack);
+                        locals_stack.addOffset(ctx.local_stack_position * sizeof(object));
+                        cc.lea(ctx.identifier, locals_stack);
+
+                        cc.mov(asmjit::x86::qword_ptr(ctx.identifier), ltype);
+                        cc.mov(asmjit::x86::qword_ptr(ctx.identifier, object_data_offset), ldata);
+
+                        REBAR_CODE_GENERATION_GUARD({
+                            asmjit::InvokeNode* reference_func_invoke;
+                            cc.invoke(&reference_func_invoke, _ext_reference_object, asmjit::FuncSignatureT<void, object*>(platform_call_convention));
+                            reference_func_invoke->setArg(0, ctx.identifier);
+                        })
+
+                        pass.set_flags(pass_flag::clobber_identifier);
+
+                        ++ctx.local_stack_position;
+                        ++ctx.block_local_offsets.back();
+                    }
+                });
+
+                cc.jmp(label_end);
+
+                cc.bind(label_catch_forward_block);
+
+                REBAR_CODE_GENERATION_GUARD({
+                    asmjit::InvokeNode* invoke;
+                    cc.invoke(&invoke, compiler::rthrow, asmjit::FuncSignatureT<void, environment*>(platform_call_convention));
+                    invoke->setArg(0, ctx.environment);
+                })
+
+                cc.bind(label_end);
 
                 break;
             }

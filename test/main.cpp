@@ -64,6 +64,7 @@ void run_test_cases(rebar::environment& env) {
 
         std::stringstream out_stream;
         env.set_out_stream(out_stream);
+        env.set_error_stream(out_stream);
 
         auto ret = func();
 
@@ -143,7 +144,12 @@ void run_test_file(rebar::environment& env) {
     std::cout << p_unit.string_representation() << std::endl;
 
     auto test_file = env.compile_string(file_contents);
-    std::cout << test_file() << '\n' << std::endl;
+
+    try {
+        std::cout << test_file() << '\n' << std::endl;
+    } catch (rebar::runtime_exception& e) {
+        std::cout << e.what() << std::endl;
+    }
 }
 
 void run_test_compile() {
@@ -189,6 +195,12 @@ void run_test_compile() {
     std::cout << ob << std::endl;
 }
 
+REBAR_FUNCTION(TestFunction) {
+    auto& comp = env->execution_provider<rebar::compiler>();
+
+    REBAR_RETURN(rebar::null);
+}
+
 int main() {
     std::filesystem::path include_directory("../include/rebar");
     auto sloc = count_file_lines(include_directory);
@@ -196,6 +208,8 @@ int main() {
 
     rebar::environment compiler_environment(rebar::use_provider<rebar::compiler>);
     rebar::library::load_implicit_libraries(compiler_environment);
+
+    compiler_environment.global_table()[compiler_environment.str("TestFunction")] = compiler_environment.bind(TestFunction);
 
     rebar::environment interpreter_environment(rebar::use_provider<rebar::interpreter>);
     rebar::library::load_implicit_libraries(interpreter_environment);

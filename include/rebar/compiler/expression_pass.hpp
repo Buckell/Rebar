@@ -2055,6 +2055,37 @@ namespace rebar {
                 cc.lea(arg_alloc, argument_memory);
                 cc.mov(asmjit::x86::qword_ptr(env_arg_pointer), arg_alloc);
 
+                REBAR_CC_DEBUG("Assign function call stack information. (%d Objects)", ctx.local_stack_position);
+
+                auto* static_call_info = ctx.source.static_call_information.emplace_back(
+                    std::make_unique<compiler_implementation::static_stack_entry_information>(
+                        ctx.local_stack_position,
+                        &ctx.source.puint,
+                        &a_expression
+                    )
+                ).get();
+
+                pass.set_flags(pass_flag::clobber_left | pass_flag::clobber_identifier);
+
+                // Load pointer to pointer of stack entry information in compiler.
+                ctx.efficient_load_integer(opp_out_type, reinterpret_cast<size_t>(&m_function_stack));
+                // Load pointer to current stack entry information.
+                cc.mov(opp_out_data, asmjit::x86::qword_ptr(opp_out_type));
+                cc.lea(ctx.identifier, ctx.function_call_information);
+                // Assign pointer previous stack entry information.
+                cc.mov(asmjit::x86::qword_ptr(ctx.identifier, offsetof(compiler_implementation::stack_entry_information, previous)), opp_out_data);
+                // Assign function data.
+                cc.mov(asmjit::x86::qword_ptr(ctx.identifier, offsetof(compiler_implementation::stack_entry_information, function_data)), out_data);
+                // Assign locals pointer.
+                cc.lea(out_type, ctx.locals_stack);
+                cc.mov(asmjit::x86::qword_ptr(ctx.identifier, offsetof(compiler_implementation::stack_entry_information, locals_position)), out_type);
+                // Assign static call information.
+                ctx.efficient_load_integer(out_type, reinterpret_cast<size_t>(static_call_info));
+                cc.mov(asmjit::x86::qword_ptr(ctx.identifier, offsetof(compiler_implementation::stack_entry_information, static_info)), out_type);
+
+                // Assign call information.
+                cc.mov(asmjit::x86::qword_ptr(opp_out_type), ctx.identifier);
+
                 REBAR_CODE_GENERATION_GUARD({
                     // TODO: Proper call.
                     asmjit::InvokeNode* invoke_node;
@@ -2062,6 +2093,13 @@ namespace rebar {
                     invoke_node->setArg(0, ctx.return_object);
                     invoke_node->setArg(1, ctx.environment);
                 })
+
+                // Load pointer to pointer of stack entry information in compiler.
+                ctx.efficient_load_integer(opp_out_type, reinterpret_cast<size_t>(&m_function_stack));
+                // Load pointer to current stack entry information.
+                cc.mov(opp_out_data, asmjit::x86::qword_ptr(opp_out_type));
+                cc.mov(opp_out_data, asmjit::x86::qword_ptr(opp_out_data));
+                cc.mov(asmjit::x86::qword_ptr(opp_out_type), opp_out_data);
 
                 argument_offset = dot_call ? 1 : 0;
 

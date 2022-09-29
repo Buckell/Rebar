@@ -15,6 +15,7 @@ namespace rebar {
         [[nodiscard]] virtual function compile(parse_unit& a_unit) = 0;
         [[nodiscard]] virtual function bind(callable a_function) = 0;
         [[nodiscard]] virtual object call(const void* a_data) = 0;
+        [[noreturn]] virtual void throw_exception() = 0;
     };
 }
 

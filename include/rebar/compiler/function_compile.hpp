@@ -10,6 +10,13 @@
 #include "../compiler.hpp"
 
 namespace rebar {
+    class asmjit_error_handler : public asmjit::ErrorHandler {
+    public:
+        void handleError(asmjit::Error err, const char* message, asmjit::BaseEmitter* origin) override {
+            printf("AsmJit error: %s %d\n", message, err);
+        }
+    };
+
     function compiler::compile(parse_unit& a_unit) {
         return compile_function(a_unit, node::parameter_list(), a_unit.m_block);
     }
@@ -19,6 +26,12 @@ namespace rebar {
 
         asmjit::x86::Compiler cc(&function_source->code);
         cc.addDiagnosticOptions(asmjit::DiagnosticOptions::kRADebugAll);
+
+        asmjit_error_handler error_handler;
+
+        if constexpr (debug_mode) {
+            function_source->code.setErrorHandler(&error_handler);
+        }
 
         function_context ctx{ cc, *function_source };
 
@@ -49,6 +62,8 @@ namespace rebar {
 
         //ctx.temporary_store_stack = ctx.stack;
         ctx.temporary_store_stack = cc.newStack(temps_allocation_size, alignof(object));
+
+        ctx.function_call_information = cc.newStack(sizeof(compiler_implementation::stack_entry_information), alignof(compiler_implementation::stack_entry_information));
 
         if (a_parameters.size() > 0) {
             ctx.function_argument_stack = cc.newStack(a_parameters.size() * sizeof(object), alignof(object));

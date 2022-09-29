@@ -10,7 +10,7 @@
 #include "../environment.hpp"
 
 namespace rebar {
-    string compiler_function_source::emplace_string_dependency(const std::string_view a_string) {
+    string& compiler_function_source::emplace_string_dependency(const std::string_view a_string) {
         for (auto& dep : string_dependencies) {
             if (dep.to_string_view() == a_string) {
                 return dep;

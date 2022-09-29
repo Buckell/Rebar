@@ -96,30 +96,32 @@ namespace rebar {
     };
 
     struct runtime_exception : public exception {
-        size_t m_index;
-        file_position m_pos;
-        std::string_view m_line;
-        std::vector<stack_trace_entry> m_stack_trace;
+        environment& m_environment;
+        //size_t m_index;
+        //file_position m_pos;
+        //std::string_view m_line;
+        //std::vector<stack_trace_entry> m_stack_trace;
 
-        runtime_exception(std::string a_message, std::string a_origin, const size_t a_index, const file_position a_pos, const std::string_view a_line)
-                : exception("RUNTIME", a_message, 0), m_index(a_index), m_pos(a_pos), m_line(a_line) { generate_message(); }
+        runtime_exception(environment& a_environment);
 
-        std::string generate_message() noexcept override {
-            using namespace std::string_literals;
+        std::string generate_message() noexcept override;
 
-            std::string message = "[EXCEPTION - RUNTIME] "s + m_message + '\n';
-
-            for (size_t i = 0; i < m_stack_trace.size(); ++i) {
-                stack_trace_entry& entry = m_stack_trace[i];
-                message += std::string(i * 2, ' ') + std::to_string(i + 1) + ". " + entry.m_file + " [ LINE " + std::to_string(entry.m_pos.row + 1) + " : " + std::to_string(entry.m_pos.column) + "]\n";
-            }
-
-            message += '\n';
-            message += m_line;
-            message += std::string(m_pos.column, ' ') + "^\n";
-
-            return message;
-        }
+        //std::string generate_message() noexcept override {
+        //    using namespace std::string_literals;
+        //
+        //    std::string message = "[EXCEPTION - RUNTIME] "s + m_message + '\n';
+        //
+        //    for (size_t i = 0; i < m_stack_trace.size(); ++i) {
+        //        stack_trace_entry& entry = m_stack_trace[i];
+        //        message += std::string(i * 2, ' ') + std::to_string(i + 1) + ". " + entry.m_file + " [ LINE " + std::to_string(entry.m_pos.row + 1) + " : " + std::to_string(entry.m_pos.column) + "]\n";
+        //    }
+        //
+        //    message += '\n';
+        //    message += m_line;
+        //    message += std::string(m_pos.column, ' ') + "^\n";
+        //
+        //    return message;
+        //}
     };
 }
 

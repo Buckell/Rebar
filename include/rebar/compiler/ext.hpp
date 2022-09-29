@@ -6,6 +6,7 @@
 #define REBAR_EXT_HPP
 
 #include "../environment.hpp"
+#include "../compiler.hpp"
 
 #include "object_ext.hpp"
 
@@ -55,8 +56,8 @@ namespace rebar {
         }
     }
 
-    void _ext_output_object_data(size_t type, size_t data, size_t annotation) {
-        std::cout << "[" << std::dec << annotation << "] " << type << " " << std::hex << data << std::endl;
+    void _ext_output_object_data(size_t type, size_t data) {
+        std::cout << "[OUTPUT] " << type << " " << std::hex << data << std::endl;
     }
 
     table* _ext_allocate_table() {

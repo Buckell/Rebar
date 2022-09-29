@@ -6,6 +6,7 @@
 #define REBAR_COMPILER_HPP
 
 #include <set>
+#include <utility>
 
 #include "asmjit/asmjit.h"
 
@@ -13,9 +14,34 @@
 #include "object.hpp"
 #include "table.hpp"
 
-#include "compiler/ext.hpp"
+#include "compiler/tsetjmp.hpp"
 
 namespace rebar {
+    namespace compiler_implementation {
+        struct static_stack_entry_information {
+            size_t locals_count;
+            parse_unit* source_unit;
+            const node::expression* source_expression;
+
+            static_stack_entry_information(size_t a_locals_count, parse_unit* a_source_unit, const node::expression* a_source_expression)
+                : locals_count(a_locals_count), source_unit(a_source_unit), source_expression(a_source_expression) {}
+        };
+
+        struct stack_entry_information {
+            stack_entry_information* previous;
+            void* function_data;
+            object* locals_position;
+            static_stack_entry_information* static_info;
+        };
+
+        struct exception_handler_data {
+            std::jmp_buf* buffer;
+            stack_entry_information* function_stack_position;
+        };
+    }
+
+    void _ext_output_object_data(size_t type, size_t data);
+
     class environment;
 
     struct compiler_function_source {
@@ -24,13 +50,14 @@ namespace rebar {
         asmjit::CodeHolder code;
         std::vector<string> string_dependencies;
         node::parameter_list parameters;
+        std::vector<std::unique_ptr<compiler_implementation::static_stack_entry_information>> static_call_information;
 
-        explicit compiler_function_source(environment& a_env, parse_unit& a_puint, const node::parameter_list& a_parameters, asmjit::JitRuntime& a_rt, asmjit::Logger& a_logger) : env(a_env), puint(a_puint), parameters(a_parameters) {
+        explicit compiler_function_source(environment& a_env, parse_unit& a_puint, node::parameter_list a_parameters, asmjit::JitRuntime& a_rt, asmjit::Logger& a_logger) : env(a_env), puint(a_puint), parameters(std::move(a_parameters)) {
             code.init(a_rt.environment());
             code.setLogger(&a_logger);
         }
 
-        string emplace_string_dependency(const std::string_view a_string);
+        string& emplace_string_dependency(std::string_view a_string);
     };
 
     struct compiler_flag {
@@ -52,13 +79,28 @@ namespace rebar {
 
         flags m_flags = compiler_flag::default_flags;
 
+        compiler_implementation::stack_entry_information* m_function_stack = nullptr;
+
+        std::array<compiler_implementation::exception_handler_data, 32> m_exception_handler_stack;
+        size_t m_exception_handler_stack_position = 0;
+
     public:
         constexpr static asmjit::CallConvId platform_call_convention = platform::current & platform::windows ? asmjit::CallConvId::kX64Windows : asmjit::CallConvId::kHost;
 
         // TODO: Modify preliminary scan to determine needed allocation size;
         constexpr static size_t default_temporary_stack_allocation = 6;
 
-        explicit compiler(environment& a_environment) noexcept : m_environment(a_environment), m_logger(stdout) {}
+        explicit compiler(environment& a_environment) noexcept : m_environment(a_environment), m_logger(stdout) {
+            for (size_t i = 0; i < 32; ++i) {
+                m_exception_handler_stack[i].buffer = reinterpret_cast<std::jmp_buf*>(std::malloc(sizeof(std::jmp_buf)));
+            }
+        }
+
+        ~compiler() {
+            for (size_t i = 0; i < 32; ++i) {
+                std::free(m_exception_handler_stack[i].buffer);
+            }
+        }
 
         [[nodiscard]] flags& get_flags() noexcept {
             return m_flags;
@@ -85,11 +127,28 @@ namespace rebar {
         [[nodiscard]] object call(const void* a_data) override {
             auto function = reinterpret_cast<callable>(const_cast<void*>(a_data));
 
-            object return_value;
-            function(&return_value, &m_environment);
+            auto& handler = m_exception_handler_stack[m_exception_handler_stack_position];
+            ++m_exception_handler_stack_position;
 
-            return return_value;
+            handler.function_stack_position = m_function_stack;
+
+            int exception_control = std::setjmp(*handler.buffer);
+
+            if (exception_control == 0) {
+                object return_value;
+                function(&return_value, &m_environment);
+
+                --m_exception_handler_stack_position;
+
+                return return_value;
+            } else {
+                --m_exception_handler_stack_position;
+
+                throw runtime_exception(m_environment);
+            }
         }
+
+        [[noreturn]] void throw_exception() override;
 
         void enable_assembly_debug_output(bool a_enable) {
             m_logger.setFile(a_enable ? stdout : nullptr);
@@ -111,14 +170,16 @@ namespace rebar {
             // Pass Flags
 
             // Converts identifiers into strings. Useful for indexing operations.
-            REBAR_DEFINE_FLAG(identifier_as_string, 1);
+            REBAR_DEFINE_FLAG(identifier_as_string,         1);
             // Treats an identifier as a local definition. Useful for local function definitions.
-            REBAR_DEFINE_FLAG(local_identifier, 2);
+            REBAR_DEFINE_FLAG(local_identifier,             2);
             // Voids machine code generation. Useful for test/scan passes.
-            REBAR_DEFINE_FLAG(void_code_generation, 3);
+            REBAR_DEFINE_FLAG(void_code_generation,         3);
             // Evaluates expression as constant.
             REBAR_DEFINE_FLAG(evaluate_constant_expression, 4);
-            REBAR_DEFINE_FLAG(check_local_definition, 5);
+            REBAR_DEFINE_FLAG(check_local_definition,       5);
+            // Restore handler position to proper position on return.
+            REBAR_DEFINE_FLAG(restore_handler_position,     6);
 
             // Return Flags
 
@@ -185,6 +246,8 @@ namespace rebar {
 
             std::vector<std::optional<std::pair<asmjit::Label, asmjit::Label>>> loop_stack;
 
+            asmjit::x86::Mem function_call_information;
+
             function_context(asmjit::x86::Compiler& a_cc, compiler_function_source& a_source) : assembler(a_cc), source(a_source) {
                 input_flag_stack.push_back(pass_flag::none); // Next pass.
                 output_flag_stack.push_back(pass_flag::none); // Current pass.
@@ -232,21 +295,14 @@ namespace rebar {
                 cc.mov(identifier, temporary_store_stack);
             }
 
-            [[maybe_unused]] void emplace_raw_side_output(output_side a_side, size_t a_annotation = 0) {
+            [[maybe_unused]] void emplace_raw_side_output(output_side a_side) {
                 auto [out_type, out_data] = expression_registers(a_side);
                 auto& cc = assembler;
 
-                cc.commentf("EMPLACE_RAW_SIDE_OUTPUT (%d)", a_annotation);
-
-                static auto t = cc.newGpq();
-
-                cc.mov(t, a_annotation);
-
                 asmjit::InvokeNode* invoke_node;
-                cc.invoke(&invoke_node, _ext_output_object_data, asmjit::FuncSignatureT<void, size_t, size_t, size_t>(platform_call_convention));
+                cc.invoke(&invoke_node, _ext_output_object_data, asmjit::FuncSignatureT<void, size_t, size_t>(platform_call_convention));
                 invoke_node->setArg(0, out_type);
                 invoke_node->setArg(1, out_data);
-                invoke_node->setArg(2, t);
             }
 
             [[nodiscard]] asmjit::x86::Mem mark_argument_allocation() noexcept {
@@ -413,11 +469,21 @@ namespace rebar {
 
         void perform_preliminary_function_scan(function_context& ctx, const node::block& a_block);
 
-        void perform_block_pass(function_context& ctx, const node::block& a_block);
+        template <typename t_pre_pass_function = std::nullptr_t, typename t_post_pass_function = std::nullptr_t>
+        void perform_block_pass(function_context& ctx, const node::block& a_block, t_pre_pass_function a_pre_pass = nullptr, t_post_pass_function a_post_pass = nullptr);
         void perform_node_pass(function_context& ctx, const node& a_node, output_side a_side = output_side::lefthand, std::optional<const node*> a_next = std::nullopt);
         void perform_expression_pass(function_context& ctx, const node::expression& a_expression, output_side a_side = output_side::lefthand);
         void perform_assignable_node_pass(function_context& ctx, const node& a_node);
         void perform_assignable_expression_pass(function_context& ctx, const node::expression& a_expression);
+
+        void perform_exception_cleanup(compiler_implementation::stack_entry_information* a_beginning_position) const {
+            for (auto* current = m_function_stack; current != a_beginning_position; current = current->previous) {
+                object::block_dereference(current->locals_position, current->static_info->locals_count);
+            }
+        }
+
+        static void ithrow(environment* a_env, object* a_object, size_t a_string_data);
+        static void rthrow(environment* a_env);
     };
 
     static compiler::output_side operator ! (compiler::output_side a_pos) noexcept {
