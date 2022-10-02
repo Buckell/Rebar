@@ -11,6 +11,8 @@
 
 namespace rebar {
     object interpreter::interpreted_function_source::internal_call() {
+        auto& interp = m_environment.execution_provider<interpreter>();
+
         enum class node_tags : enum_base {
             none,
             identifier_as_string
@@ -331,7 +333,7 @@ namespace rebar {
             return null;
         };
 
-        evaluate_expression = [this, &resolve_node, &resolve_assignable, &detail_resolve_node](const node::expression& a_expression) -> object {
+        evaluate_expression = [this, &interp, &resolve_node, &resolve_assignable, &detail_resolve_node](const node::expression& a_expression) -> object {
             if (a_expression.empty()) {
                 return null;
             }
@@ -637,7 +639,17 @@ namespace rebar {
                         args.push_back(resolve_node(*it));
                     }
 
-                    return callee.call(m_environment, args);
+                    interp.m_function_stack.emplace_back(
+                        callee.data(),
+                        m_unit,
+                        a_expression
+                    );
+
+                    object ret = callee.call(m_environment, args);
+
+                    interp.m_function_stack.pop_back();
+
+                    return ret;
                 }
                 case separator::new_object:
                     if (a_expression.count() > 1) {
@@ -669,7 +681,7 @@ namespace rebar {
             size_t loop_index = 0;
         };
 
-        std::function<return_state (const span<node>)> evaluate_block = [this, &local_tables, &evaluate_expression, &evaluate_block, &resolve_assignable_expression](const span<node> a_block) -> return_state {
+        std::function<return_state (const span<node>)> evaluate_block = [this, &interp, &local_tables, &evaluate_expression, &evaluate_block, &resolve_assignable_expression](const span<node> a_block) -> return_state {
             local_tables.emplace_back();
             table& local_table = local_tables.back();
 
@@ -773,7 +785,7 @@ namespace rebar {
 
                         auto& env_interpreter = dynamic_cast<interpreter&>(m_environment.execution_provider());
 
-                        env_interpreter.m_function_sources.emplace_back(dynamic_cast<function_source*>(new interpreted_function_source(m_environment, decl.m_parameters, decl.m_body)));
+                        env_interpreter.m_function_sources.emplace_back(dynamic_cast<function_source*>(new interpreted_function_source(m_environment, decl.m_parameters, m_unit, decl.m_body)));
 
                         function func { m_environment, reinterpret_cast<void*>(env_interpreter.m_function_sources.back().get()) };
 
@@ -851,6 +863,69 @@ namespace rebar {
                         return { return_status::loop_break, null, n.get_break_statement() };
                     case node::type::continue_statement:
                         return { return_status::loop_continue, null, n.get_continue_statement() };
+                    case node::type::throw_statement: {
+                        const auto& stmt = n.get_throw_statement();
+
+                        m_environment.set_runtime_exception_information(m_environment.str(stmt.m_exception_type), stmt.m_expression.has_value() ? evaluate_expression(*stmt.m_expression) : null);
+
+                        throw runtime_exception(m_environment);
+                    }
+                    case node::type::try_catch_block: {
+                        const auto& decl = n.get_try_catch_block();
+
+                        size_t pre_function_stack_size = interp.m_function_stack.size();
+
+                        try {
+                            return_state state{ evaluate_block(decl.m_body) };
+
+                            if (state.status == return_status::function_return) {
+                                return state;
+                            } else if (state.status == return_status::loop_break) {
+                                if (state.loop_index == 0) {
+                                    break;
+                                } else {
+                                    --state.loop_index;
+                                    return state;
+                                }
+                            } else if (state.status == return_status::loop_continue && state.loop_index > 0) {
+                                --state.loop_index;
+                                return state;
+                            }
+                        } catch (const runtime_exception& e) {
+                            if (std::find(decl.m_exception_types.begin(), decl.m_exception_types.end(),
+                                m_environment.get_exception_type().to_string_view()) != decl.m_exception_types.end()) {
+
+                                auto& tbl = local_tables.emplace_back();
+                                tbl[m_environment.str(decl.m_exception_identifier)] = m_environment.get_exception_object();
+
+                                // Generate stack trace.
+
+                                while (pre_function_stack_size < interp.m_function_stack.size()) {
+                                    interp.m_function_stack.pop_back();
+                                }
+
+                                return_state state{ evaluate_block(decl.m_catch) };
+
+                                local_tables.pop_back();
+
+                                if (state.status == return_status::function_return) {
+                                    return state;
+                                } else if (state.status == return_status::loop_break) {
+                                    if (state.loop_index == 0) {
+                                        break;
+                                    } else {
+                                        --state.loop_index;
+                                        return state;
+                                    }
+                                } else if (state.status == return_status::loop_continue && state.loop_index > 0) {
+                                    --state.loop_index;
+                                    return state;
+                                }
+                            } else {
+                                throw e;
+                            }
+                        }
+                    }
                     default:
                         break;
                 }
