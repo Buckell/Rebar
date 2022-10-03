@@ -16,7 +16,7 @@ namespace rebar::library::standard {
                 return env->create_native_object<std::vector<std::string>>("REBAR::STD::STRING_UTILITY::STRING_BUILDER");
             };
 
-            a_string_builder.overload_addition_assignment = [](environment* env, native_object a_this, object& rhs) {
+            a_string_builder.overload_addition_assignment = [](environment* env, native_object a_this, const object& rhs) {
                 a_this.get_object<std::vector<std::string>>().push_back(rhs.to_string());
             };
 
