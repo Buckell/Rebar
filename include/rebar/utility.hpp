@@ -13,6 +13,60 @@
 
 #include "definitions.hpp"
 
+#define REBAR_STRINGIFY(x) REBAR_STRINGIFY2(x)
+#define REBAR_STRINGIFY2(x) #x
+
+#define REBAR_OVERLOAD_TEST(pname, name, ret, ...) template <typename t_type, typename t_return = void, typename... t_elements> \
+                                         class has_##pname { \
+                                             template <typename t_c, typename = decltype(std::declval<t_c>().name(std::declval<t_elements>()...))> \
+                                             static auto test(int) {                                 \
+                                                if constexpr (std::is_same_v<decltype(std::declval<t_c>().name(std::declval<t_elements>()...)), t_return>) { \
+                                                    return std::true_type{};                                                               \
+                                                } else {                                                       \
+                                                    return std::false_type{};                                                   \
+                                                } \
+                                             } \
+                                             template <typename t_c> \
+                                             static std::false_type test(...) {} \
+                                         public: \
+                                             constexpr static bool value = decltype(test<t_type>(0))::value; \
+                                         };                                                                    \
+                                                                                                               \
+                                         template <typename t_type, typename t_return = void, typename... t_elements>                                   \
+                                         constexpr static bool has_##pname##_v = has_##pname<t_type, ret, __VA_ARGS__>::value;
+
+#define REBAR_OVERLOAD_TEST_NO_PARAM(pname, name, ret) template <typename t_type> \
+                                         class has_##pname { \
+                                             template <typename t_c, typename = decltype(std::declval<t_c>().name())> \
+                                             static auto test(int) {                                 \
+                                                if constexpr (std::is_same_v<decltype(std::declval<t_c>().name()), ret>) { \
+                                                    return std::true_type{};                                                               \
+                                                } else {                                                       \
+                                                    return std::false_type{};                                                   \
+                                                } \
+                                             } \
+                                             template <typename t_c> \
+                                             static std::false_type test(...) {} \
+                                         public: \
+                                             constexpr static bool value = decltype(test<t_type>(0))::value; \
+                                         };                                                                    \
+                                                                                                               \
+                                         template <typename t_type>                                   \
+                                         constexpr static bool has_##pname##_v = has_##pname<t_type>::value;
+
+#define REBAR_OVERLOAD_TEST_SIMPLE(pname, name) template <typename t_type> \
+                                         class has_##pname { \
+                                             template <typename t_c, typename = decltype(std::declval<t_c>().name())> \
+                                             static std::true_type test(int) {} \
+                                             template <typename t_c> \
+                                             static std::false_type test(...) {} \
+                                         public: \
+                                             constexpr static bool value = decltype(test<t_type>(0))::value; \
+                                         };                                                                    \
+                                                                                                               \
+                                         template <typename t_type>                                   \
+                                         constexpr static bool has_##pname##_v = has_##pname<t_type>::value;
+
 namespace rebar {
     [[nodiscard]] constexpr bool is_integer_string(const std::string_view a_string) noexcept {
         return !a_string.empty() && a_string.find_first_not_of("0123456789-+") == std::string::npos;
@@ -134,29 +188,8 @@ namespace rebar {
         return reinterpret_cast<const t_pointer*>(reinterpret_cast<const uint8_t*>(a_ptr) + a_offset);
     }
 
-    template <typename t_type>
-    class has_std_size_function {
-        template <typename t_c, typename = decltype(std::declval<t_c>().size())>
-        static std::true_type test(int) {}
-
-        template <typename t_c>
-        static std::false_type test(...) {}
-
-    public:
-        constexpr static bool value = decltype(test<t_type>(0))::value;
-    };
-
-    template <typename t_type>
-    class has_std_data_function {
-        template <typename t_c, typename = decltype(std::declval<t_c>().data())>
-        static std::true_type test(int) {}
-
-        template <typename t_c>
-        static std::false_type test(...) {}
-
-    public:
-        constexpr static bool value = decltype(test<t_type>(0))::value;
-    };
+    REBAR_OVERLOAD_TEST_SIMPLE(std_size_function, size);
+    REBAR_OVERLOAD_TEST_SIMPLE(std_data_function, data)
 
     template <typename t_destination, typename t_source>
     t_destination bit_cast(t_source a_source) {
