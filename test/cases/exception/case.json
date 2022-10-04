@@ -1,0 +1,7 @@
+{
+    "name": "Exceptions",
+    "output": [
+        "1 Hello, world!",
+        "3 Goodbye, world!"
+    ]
+}

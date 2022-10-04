@@ -1,0 +1,22 @@
+local function Test(a) {
+    if (a == 1)
+        throw SomeException("Hello, world!");
+    else if (a == 2)
+        throw AnotherException("Goodbye, world!");
+}
+
+try {
+    try {
+        try {
+            Test(1);
+        } catch (e : SomeException) {
+            PrintLn(1, e.GetObject());
+            Test(2);
+        }
+    } catch (e : SpecificException) { // Should not run.
+        PrintLn(2, e.GetObject());
+        Test(2);
+    }
+} catch (e : AnotherException) {
+    PrintLn(3, e.GetObject());
+}
