@@ -11,9 +11,15 @@
 
 namespace rebar {
     class asmjit_error_handler : public asmjit::ErrorHandler {
+        compiler& m_compiler;
+
     public:
+        asmjit_error_handler(compiler& a_compiler) : asmjit::ErrorHandler(), m_compiler(a_compiler) {}
+
         void handleError(asmjit::Error err, const char* message, asmjit::BaseEmitter* origin) override {
-            printf("AsmJit error: %s %d\n", message, err);
+            if (m_compiler.is_assembly_debug_output_enabled()) {
+                std::cout << "AsmJit Error (" << static_cast<size_t>(err) << "): " << message << std::endl;
+            }
         }
     };
 
@@ -27,7 +33,7 @@ namespace rebar {
         asmjit::x86::Compiler cc(&function_source->code);
         cc.addDiagnosticOptions(asmjit::DiagnosticOptions::kRADebugAll);
 
-        asmjit_error_handler error_handler;
+        asmjit_error_handler error_handler(*this);
 
         if constexpr (debug_mode) {
             function_source->code.setErrorHandler(&error_handler);

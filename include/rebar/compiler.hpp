@@ -150,8 +150,12 @@ namespace rebar {
 
         [[noreturn]] void throw_exception() override;
 
-        void enable_assembly_debug_output(bool a_enable) {
+        void enable_assembly_debug_output(bool a_enable) noexcept {
             m_logger.setFile(a_enable ? stdout : nullptr);
+        }
+
+        [[nodiscard]] bool is_assembly_debug_output_enabled() const noexcept {
+            return m_logger._file != nullptr;
         }
 
         enum class output_side {
