@@ -32,6 +32,8 @@
 #include "library.hpp"
 #include "native_object.hpp"
 #include "native_object_impl.hpp"
+#include "native_template.hpp"
+#include "native_template_impl.hpp"
 #include "object.hpp"
 #include "object_impl.hpp"
 #include "operator_precedence.hpp"
