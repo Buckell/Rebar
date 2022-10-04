@@ -14,6 +14,7 @@
 #include "table.hpp"
 #include "native_object_impl.hpp"
 #include "compiler.hpp"
+#include "native_classes/load.hpp"
 
 #include <xxhash.hpp>
 #include <skarupke_map.hpp>
@@ -78,12 +79,17 @@ namespace rebar {
 
         string m_runtime_exception_type;
         object m_runtime_exception_object;
+        object m_exception_native_object;
 
     public:
-        environment() noexcept : m_provider(std::make_unique<default_provider>(*this)), m_runtime_exception_type(str("None")) {}
+        environment() noexcept : m_provider(std::make_unique<default_provider>(*this)), m_runtime_exception_type(str("None")) {
+            generate_default_objects();
+        }
 
         template <typename t_provider>
-        explicit environment(const use_provider_t<t_provider>) noexcept : m_provider(std::make_unique<t_provider>(*this)), m_runtime_exception_type(str("None")) {};
+        explicit environment(const use_provider_t<t_provider>) noexcept : m_provider(std::make_unique<t_provider>(*this)), m_runtime_exception_type(str("None")) {
+            generate_default_objects();
+        };
 
         environment(const environment&) = delete;
         environment(environment&&) = delete;
@@ -142,6 +148,10 @@ namespace rebar {
 
         [[nodiscard]] const object& get_exception_object() const noexcept {
             return m_runtime_exception_object;
+        }
+
+        [[nodiscard]] const object& get_exception_native_object() const noexcept {
+            return m_exception_native_object;
         }
 
         virtual_table& register_native_class(const object a_identifier, virtual_table a_table = {}) {
@@ -362,6 +372,11 @@ namespace rebar {
         template <typename t_provider>
         [[nodiscard]] t_provider& execution_provider() noexcept {
             return dynamic_cast<t_provider&>(*m_provider);
+        }
+
+    private:
+        void generate_default_objects() {
+            m_exception_native_object = native::load_exception(*this);
         }
     };
 }

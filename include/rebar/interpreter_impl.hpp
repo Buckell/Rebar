@@ -896,7 +896,7 @@ namespace rebar {
                                 m_environment.get_exception_type().to_string_view()) != decl.m_exception_types.end()) {
 
                                 auto& tbl = local_tables.emplace_back();
-                                tbl[m_environment.str(decl.m_exception_identifier)] = m_environment.get_exception_object();
+                                tbl[m_environment.str(decl.m_exception_identifier)] = m_environment.get_exception_native_object();
 
                                 // Generate stack trace.
 

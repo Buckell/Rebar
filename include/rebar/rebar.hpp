@@ -20,6 +20,7 @@
 #include "compiler/misc.hpp"
 #include "compiler/node_pass.hpp"
 #include "compiler/preliminary_scan.hpp"
+#include "native_classes/exception.hpp"
 #include "definitions.hpp"
 #include "environment.hpp"
 #include "exception.hpp"

@@ -629,7 +629,7 @@ namespace rebar {
                     if (!pass.flags_set(pass_flag::void_code_generation) && local_table.find(decl.m_exception_identifier) == local_table.cend()) {
                         local_table.emplace(decl.m_exception_identifier, ctx.local_stack_position);
 
-                        ctx.efficient_load_integer(ctx.identifier, reinterpret_cast<size_t>(&env.get_exception_object()));
+                        ctx.efficient_load_integer(ctx.identifier, reinterpret_cast<size_t>(&env.get_exception_native_object()));
                         cc.mov(ltype, asmjit::x86::qword_ptr(ctx.identifier));
                         cc.mov(ldata, asmjit::x86::qword_ptr(ctx.identifier, object_data_offset));
 
