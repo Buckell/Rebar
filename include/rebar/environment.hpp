@@ -66,7 +66,7 @@ namespace rebar {
 
         std::vector<function> m_functions;
         std::map<size_t, std::unique_ptr<function_info>> m_function_infos;
-        size_t m_function_id_count;
+        size_t m_function_id_count = 0;
 
         table m_global_table;
         table m_string_virtual_table;
