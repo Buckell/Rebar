@@ -537,11 +537,6 @@ namespace rebar {
                     cc.movdqa(asmjit::x86::dqword_ptr(ctx.return_object), ctx.transfer);
                 }
 
-                if (pass.flags_set(pass_flag::restore_handler_position)) {
-                    ctx.efficient_load_integer(ctx.identifier, reinterpret_cast<size_t>(&m_exception_handler_stack_position));
-                    cc.dec(asmjit::x86::qword_ptr(ctx.identifier));
-                }
-
                 ctx.efficient_load_integer(ctx.identifier, reinterpret_cast<size_t>(ctx.source.emplace_string_dependency(stmt.m_exception_type).data()));
 
                 REBAR_CODE_GENERATION_GUARD({
