@@ -234,7 +234,7 @@ namespace rebar {
             return { 0, 0 };
         }
 
-        file_position position;
+        file_position position{ 1, 1 };
 
         for (size_t i = 0; i <= a_index; ++i) {
             char character = a_plaintext[i];
@@ -243,7 +243,7 @@ namespace rebar {
                 ++position.column;
             } else if (character == '\n') {
                 ++position.row;
-                position.column = 0;
+                position.column = 1;
             }
         }
 
