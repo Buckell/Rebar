@@ -135,8 +135,25 @@ namespace rebar {
             int exception_control = std::setjmp(*handler.buffer);
 
             if (exception_control == 0) {
+                const compiler_implementation::static_stack_entry_information static_call_info{
+                    0,
+                    nullptr,
+                    nullptr
+                };
+
+                compiler_implementation::stack_entry_information call_info{
+                    m_function_stack,
+                    a_data,
+                    nullptr,
+                    &static_call_info
+                };
+
+                m_function_stack = &call_info;
+
                 object return_value;
                 function(&return_value, &m_environment);
+
+                m_function_stack = m_function_stack->previous;
 
                 --m_exception_handler_stack_position;
 
