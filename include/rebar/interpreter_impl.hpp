@@ -892,7 +892,7 @@ namespace rebar {
                                 return state;
                             }
                         } catch (const runtime_exception& e) {
-                            if (std::find(decl.m_exception_types.begin(), decl.m_exception_types.end(),
+                            if (decl.m_exception_types.empty() || std::find(decl.m_exception_types.begin(), decl.m_exception_types.end(),
                                 m_environment.get_exception_type().to_string_view()) != decl.m_exception_types.end()) {
 
                                 auto& tbl = local_tables.emplace_back();
