@@ -898,7 +898,16 @@ namespace rebar {
                                 auto& tbl = local_tables.emplace_back();
                                 tbl[m_environment.str(decl.m_exception_identifier)] = m_environment.get_exception_native_object();
 
-                                // Generate stack trace.
+                                auto& trace = m_environment.get_stack_trace();
+                                trace.clear();
+
+                                for (auto& entry : interp.m_function_stack) {
+                                    trace.add(
+                                        function(m_environment, reinterpret_cast<const void*>(entry.function_data)),
+                                        &entry.unit,
+                                        &entry.expr
+                                    );
+                                }
 
                                 while (pre_function_stack_size < interp.m_function_stack.size()) {
                                     interp.m_function_stack.pop_back();
