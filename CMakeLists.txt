@@ -7,10 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(ASMJIT_DIRECTORY "${CMAKE_SOURCE_DIR}/asmjit")
 set(RE2_DIRECTORY "${CMAKE_SOURCE_DIR}/re2")
 
-set(PLATFORM "WINDOWS")
-set(PROFILE "DEBUG")
-set(COMPILER "GCC")
-
 include_directories(
     ${CMAKE_SOURCE_DIR}/include
     ${ASMJIT_DIRECTORY}/src
@@ -30,7 +26,7 @@ elseif("${PLATFORM}" STREQUAL "LINUX")
     add_compile_definitions(REBAR_PLATFORM_LINUX)
 endif()
 
-if ("${PROFILE}" STREQUAL "DEBUG")
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "DEBUG")
     add_compile_definitions(REBAR_DEBUG)
 endif()
 
@@ -39,10 +35,10 @@ file(GLOB_RECURSE RE2_SOURCE_FILES "${RE2_DIRECTORY}/src/*.cc")
 
 add_executable(test64 ${CMAKE_SOURCE_DIR}/test/main.cpp ${ASMJIT_SOURCE_FILES} ${RE2_SOURCE_FILES})
 
-if ("${COMPILER}" STREQUAL "GCC")
+if ("${COMPILER_PROFILE}" STREQUAL "GCC")
     add_compile_definitions(REBAR_COMPILER_GCC)
     add_definitions(-Wall -Wextra -msse2 -m64 -g)
-elseif("${COMPILER}" STREQUAL "MSVC")
+elseif("${COMPILER_PROFILE}" STREQUAL "MSVC")
     add_compile_definitions(REBAR_COMPILER_MSVC)
     add_definitions(/W4)
 endif()
