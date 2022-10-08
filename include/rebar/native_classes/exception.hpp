@@ -10,9 +10,7 @@
 #include "load.hpp"
 
 namespace rebar::native {
-    struct exception_internal {};
-
-    struct exception : public native_template<exception_internal> {
+    struct exception : public native_template<> {
         REBAR_NATIVE_CLASS(exception, "EXCEPTION");
 
         REBAR_NATIVE_FUNCTION(GetObject) {
@@ -21,6 +19,15 @@ namespace rebar::native {
 
         REBAR_NATIVE_FUNCTION(GetType) {
             REBAR_RETURN(env->get_exception_type());
+        }
+
+        REBAR_NATIVE_FUNCTION(GetStackTrace) {
+            REBAR_RETURN(env->str(env->generate_exception_message()));
+        }
+
+        REBAR_NATIVE_FUNCTION(PrintStackTrace) {
+            std::cout << env->generate_exception_message() << std::endl;
+            REBAR_RETURN(null);
         }
     };
 

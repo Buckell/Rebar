@@ -128,7 +128,9 @@ namespace rebar {
         native_template_function_definition(environment& a_env, std::string_view a_name, virtual_table& a_table, callable a_function);
     };
 
-    template <typename t_internal_type>
+    struct empty_internal_object {};
+
+    template <typename t_internal_type = empty_internal_object>
     class native_template {
     protected:
         environment& m_environment;

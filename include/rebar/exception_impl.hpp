@@ -13,13 +13,7 @@ namespace rebar {
         : exception("RUNTIME", "", 0), m_environment(a_env) { get_message(); }
 
     std::string runtime_exception::generate_message() noexcept {
-        using namespace std::string_literals;
-
-        std::string message = "[EXCEPTION - RUNTIME] "s;
-        message += m_environment.get_exception_type_string();
-        message += ": ";
-        message += m_environment.get_exception_object().to_string();
-        return message;
+        return m_environment.generate_exception_message();
     }
 }
 

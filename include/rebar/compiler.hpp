@@ -29,9 +29,9 @@ namespace rebar {
 
         struct stack_entry_information {
             stack_entry_information* previous;
-            void* function_data;
+            const void* function_data;
             object* locals_position;
-            static_stack_entry_information* static_info;
+            const static_stack_entry_information* static_info;
         };
 
         struct exception_handler_data {

@@ -89,12 +89,6 @@ namespace rebar {
      *                                  ^
      */
 
-    struct stack_trace_entry {
-        std::string m_file;
-        std::string m_function_name;
-        file_position m_pos;
-    };
-
     struct runtime_exception : public exception {
         environment& m_environment;
         //size_t m_index;

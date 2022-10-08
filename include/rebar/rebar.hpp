@@ -43,6 +43,8 @@
 #include "preprocess.hpp"
 #include "provider.hpp"
 #include "span.hpp"
+#include "stack_trace.hpp"
+#include "stack_trace_impl.hpp"
 #include "string.hpp"
 #include "string_impl.hpp"
 #include "table.hpp"

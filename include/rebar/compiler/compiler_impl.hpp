@@ -17,7 +17,12 @@ namespace rebar {
 
         comp.perform_exception_cleanup(handler.function_stack_position);
 
-        // TODO: Stack trace construction.
+        auto& trace = a_env->get_stack_trace();
+        trace.clear();
+
+        for (auto* current = comp.m_function_stack; current != nullptr; current = current->previous) {
+            trace.add(function(*a_env, current->function_data), current->static_info->source_unit, current->static_info->source_expression);
+        }
 
         comp.m_function_stack = handler.function_stack_position;
 
@@ -42,7 +47,12 @@ namespace rebar {
 
         perform_exception_cleanup(handler.function_stack_position);
 
-        // TODO: Stack trace construction.
+        auto& trace = m_environment.get_stack_trace();
+        trace.clear();
+
+        for (auto* current = m_function_stack; current != nullptr; current = current->previous) {
+            trace.add(function(m_environment, current->function_data), current->static_info->source_unit, current->static_info->source_expression);
+        }
 
         m_function_stack = handler.function_stack_position;
 

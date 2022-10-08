@@ -15,6 +15,7 @@
 #include "native_object_impl.hpp"
 #include "compiler.hpp"
 #include "native_classes/load.hpp"
+#include "stack_trace.hpp"
 
 #include <xxhash.hpp>
 #include <skarupke_map.hpp>
@@ -81,13 +82,15 @@ namespace rebar {
         object m_runtime_exception_object;
         object m_exception_native_object;
 
+        stack_trace m_trace;
+
     public:
-        environment() noexcept : m_provider(std::make_unique<default_provider>(*this)), m_runtime_exception_type(str("None")) {
+        environment() noexcept : m_provider(std::make_unique<default_provider>(*this)), m_runtime_exception_type(str("None")), m_trace(*this) {
             generate_default_objects();
         }
 
         template <typename t_provider>
-        explicit environment(const use_provider_t<t_provider>) noexcept : m_provider(std::make_unique<t_provider>(*this)), m_runtime_exception_type(str("None")) {
+        explicit environment(const use_provider_t<t_provider>) noexcept : m_provider(std::make_unique<t_provider>(*this)), m_runtime_exception_type(str("None")), m_trace(*this) {
             generate_default_objects();
         };
 
@@ -152,6 +155,21 @@ namespace rebar {
 
         [[nodiscard]] const object& get_exception_native_object() const noexcept {
             return m_exception_native_object;
+        }
+
+        stack_trace& get_stack_trace() noexcept {
+            return m_trace;
+        }
+
+        [[nodiscard]] std::string generate_exception_message() {
+            std::string message = "[EXCEPTION - RUNTIME] ";
+            message += get_exception_type_string();
+            message += ": ";
+            message += get_exception_object().to_string();
+            message += '\n';
+            message += m_trace.to_string();
+
+            return message;
         }
 
         virtual_table& register_native_class(const object a_identifier, virtual_table a_table = {}) {
