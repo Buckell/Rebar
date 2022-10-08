@@ -26,7 +26,7 @@ namespace rebar::native {
         }
 
         REBAR_NATIVE_FUNCTION(PrintStackTrace) {
-            std::cout << env->generate_exception_message() << std::endl;
+            env->cerr() << env->generate_exception_message() << std::endl;
             REBAR_RETURN(null);
         }
     };
