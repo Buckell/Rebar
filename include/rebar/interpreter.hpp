@@ -62,11 +62,11 @@ namespace rebar {
         friend object function_source::internal_call();
 
         struct function_stack_entry {
-            size_t function_data;
-            const parse_unit& unit;
-            const node::expression& expr;
+            const void* function_data;
+            const parse_unit* unit;
+            const node::expression* expr;
 
-            function_stack_entry(size_t a_function_data, const parse_unit& a_unit, const node::expression& a_expression) :
+            function_stack_entry(const void* a_function_data, const parse_unit* a_unit, const node::expression* a_expression) :
                 function_data(a_function_data),
                 unit(a_unit),
                 expr(a_expression) {}
@@ -88,7 +88,17 @@ namespace rebar {
             // I know, I know. It should be relatively safe.
             auto* func = const_cast<function_source*>(reinterpret_cast<const function_source*>(a_data));
 
-            return func->internal_call();
+            m_function_stack.emplace_back(
+                a_data,
+                nullptr,
+                nullptr
+            );
+
+            object ret = func->internal_call();
+
+            m_function_stack.pop_back();
+
+            return ret;
         }
 
         [[noreturn]] void throw_exception() override {

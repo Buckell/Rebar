@@ -639,17 +639,26 @@ namespace rebar {
                         args.push_back(resolve_node(*it));
                     }
 
-                    interp.m_function_stack.emplace_back(
-                        callee.data(),
-                        m_unit,
-                        a_expression
-                    );
+                    if (callee.is_function()) {
+                        interp.m_function_stack.emplace_back(
+                                reinterpret_cast<const void*>(callee.data()),
+                                &m_unit,
+                                &a_expression
+                        );
 
-                    object ret = callee.call(m_environment, args);
+                        auto* func = reinterpret_cast<function_source*>(callee.data());
 
-                    interp.m_function_stack.pop_back();
+                        m_environment.set_argument_count(args.size());
+                        m_environment.set_arguments_pointer(args.data());
 
-                    return ret;
+                        object ret = func->internal_call();
+
+                        interp.m_function_stack.pop_back();
+
+                        return ret;
+                    } else {
+                        return callee.call(m_environment, args);
+                    }
                 }
                 case separator::new_object:
                     if (a_expression.count() > 1) {
@@ -901,11 +910,11 @@ namespace rebar {
                                 auto& trace = m_environment.get_stack_trace();
                                 trace.clear();
 
-                                for (auto& entry : interp.m_function_stack) {
+                                for (auto it = interp.m_function_stack.rbegin(); it != interp.m_function_stack.crend(); ++it) {
                                     trace.add(
-                                        function(m_environment, reinterpret_cast<const void*>(entry.function_data)),
-                                        &entry.unit,
-                                        &entry.expr
+                                        function(m_environment, it->function_data),
+                                        it->unit,
+                                        it->expr
                                     );
                                 }
 
