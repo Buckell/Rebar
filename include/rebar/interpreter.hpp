@@ -107,7 +107,6 @@ namespace rebar {
 
     private:
         environment& m_environment;
-        size_t m_argument_stack_position = 0;
         std::vector<std::unique_ptr<function_source>> m_function_sources;
         std::vector<function_stack_entry> m_function_stack;
     };
