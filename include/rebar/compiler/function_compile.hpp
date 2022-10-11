@@ -23,11 +23,11 @@ namespace rebar {
         }
     };
 
-    function compiler::compile(parse_unit& a_unit) {
-        return compile_function(a_unit, node::parameter_list(), a_unit.m_block);
+    function compiler::compile(parse_unit& a_unit, const origin& a_origin) {
+        return compile_function(a_unit, node::parameter_list(), a_unit.m_block, a_origin);
     }
 
-    function compiler::compile_function(parse_unit& a_unit, const node::parameter_list& a_parameters, const node::block& a_block) {
+    function compiler::compile_function(parse_unit& a_unit, const node::parameter_list& a_parameters, const node::block& a_block, const origin& a_origin) {
         std::unique_ptr<compiler_function_source> function_source{ std::make_unique<compiler_function_source>(m_environment, a_unit, a_parameters, m_runtime, m_logger) };
 
         asmjit::x86::Compiler cc(&function_source->code);
@@ -39,7 +39,7 @@ namespace rebar {
             function_source->code.setErrorHandler(&error_handler);
         }
 
-        function_context ctx{ cc, *function_source };
+        function_context ctx(cc, *function_source, a_origin);
 
         auto* func_node = cc.addFunc(asmjit::FuncSignatureT<void, object*, environment*>(platform_call_convention));
 

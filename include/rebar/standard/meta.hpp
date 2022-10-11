@@ -22,7 +22,6 @@ namespace rebar::library::standard {
                 table* info_table = new table;
 
                 (*info_table)[env->str("Name")] = env->str(info.get_name());
-                (*info_table)[env->str("Origin")] = env->str(info.get_origin());
                 (*info_table)[env->str("ID")] = static_cast<integer>(info.get_id());
 
                 *ret = info_table;
@@ -35,7 +34,7 @@ namespace rebar::library::standard {
         object load(environment& a_environment) override {
             table* lib_table = new table;
 
-            (*lib_table)[a_environment.str("GetFunctionInfo")] = a_environment.bind(GetFunctionInfo, "GetFunctionInfo", "REBAR::STD::META");
+            (*lib_table)[a_environment.str("GetFunctionInfo")] = a_environment.bind(GetFunctionInfo, "GetFunctionInfo", { { "CLASS", "REBAR::STD::META" } });
 
             return lib_table;
         }

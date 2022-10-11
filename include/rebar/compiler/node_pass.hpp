@@ -197,13 +197,18 @@ namespace rebar {
             case node::type::function_declaration: {
                 const auto& decl = a_node.get_function_declaration();
 
-                function func = compile_function(ctx.source.puint, decl.m_parameters, decl.m_body);
+                origin orig;
+
+                orig.type_flags = ctx.func_origin.type_flags & ~origin::flag::unit;
+                orig.info = ctx.func_origin.info;
+
+                function func = compile_function(ctx.source.puint, decl.m_parameters, decl.m_body, orig);
 
                 std::string_view function_identifier_plaintext = decl.m_identifier.get_string_representation(ctx.source.puint.m_plaintext);
 
                 m_environment.emplace_function_info(func, {
                     std::string(function_identifier_plaintext),
-                    "REBAR INTERNAL;COMPILER;"s + std::to_string(m_environment.get_current_function_id_stack()),
+                    std::move(orig),
                     0,
                     std::make_unique<function_info_source::rebar>(ctx.source.puint.m_plaintext, a_node)
                 });

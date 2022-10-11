@@ -51,16 +51,7 @@ void run_test_cases(rebar::environment& env) {
 
         const auto& code_data = file_json["code"];
 
-        std::stringstream sstr;
-        sstr << std::ifstream(file.path() / "main.rbr").rdbuf();
-        std::string code{ sstr.str() };
-
-        if (!file_json["enable_debug_output"].is_null()) {
-            rebar::parse_unit pu = rebar::parse(env.code_lexer(), code);
-            std::cout << pu.string_representation() << std::endl;
-        }
-
-        auto func = env.compile_string(code, file.path().stem().string(), "TEST CASE");
+        auto func = env.compile_file(file.path() / "main.rbr", file.path().stem().string());
 
         std::stringstream out_stream;
         env.set_out_stream(out_stream);

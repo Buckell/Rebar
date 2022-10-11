@@ -47,13 +47,15 @@ namespace rebar {
             node::parameter_list m_arguments;
             const parse_unit& m_unit;
             const node::block& m_body;
+            origin m_origin;
 
         public:
-            interpreted_function_source(environment& a_environment, node::parameter_list a_arguments, const parse_unit& a_unit, const node::block& a_body) noexcept :
+            interpreted_function_source(environment& a_environment, node::parameter_list a_arguments, const parse_unit& a_unit, const node::block& a_body, origin a_origin) noexcept :
                     function_source(a_environment),
                     m_arguments(std::move(a_arguments)),
                     m_unit(a_unit),
-                    m_body(a_body) {}
+                    m_body(a_body),
+                    m_origin(std::move(a_origin)) {}
 
         protected:
             object internal_call() override;
@@ -74,8 +76,8 @@ namespace rebar {
 
         explicit interpreter(environment& a_environment) noexcept : m_environment(a_environment) {}
 
-        [[nodiscard]] function compile(parse_unit& a_unit) override {
-            m_function_sources.emplace_back(dynamic_cast<function_source*>(new interpreted_function_source(m_environment, node::parameter_list(), a_unit, a_unit.m_block)));
+        [[nodiscard]] function compile(parse_unit& a_unit, const origin& a_origin) override {
+            m_function_sources.emplace_back(dynamic_cast<function_source*>(new interpreted_function_source(m_environment, node::parameter_list(), a_unit, a_unit.m_block, a_origin)));
             return { m_environment, m_function_sources.back().get() };
         }
 

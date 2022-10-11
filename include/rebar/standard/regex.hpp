@@ -37,7 +37,7 @@ namespace rebar::library::standard {
                 }
 
                 REBAR_RETURN(object::from_bool(RE2::FullMatch(compare_object.get_string().to_string_view(), *instance)));
-            }, "FullMatch", "REBAR::STD::REGEX::ENGINE");
+            }, "FullMatch", { { "CLASS", "REBAR::STD::REGEX::ENGINE" } });
 
             a_regex_instance[a_environment.str("PartialMatch")] = a_environment.bind([](object* ret, environment* env) -> void {
                 const auto& this_object = env->arg(0);
@@ -50,7 +50,7 @@ namespace rebar::library::standard {
                 }
 
                 REBAR_RETURN(object::from_bool(RE2::PartialMatch(compare_object.get_string().to_string_view(), *instance)));
-            }, "PartialMatch", "REBAR::STD::REGEX::ENGINE");
+            }, "PartialMatch", { { "CLASS", "REBAR::STD::REGEX::ENGINE" } });
 
             a_regex_instance[a_environment.str("Replace")] = a_environment.bind([](object* ret, environment* env) -> void {
                 const auto& this_object = env->arg(0);
@@ -68,7 +68,7 @@ namespace rebar::library::standard {
                 RE2::Replace(&out, *instance, replace.get_string().to_string_view());
 
                 REBAR_RETURN(env->str(out));
-            }, "Replace", "REBAR::STD::REGEX::ENGINE");
+            }, "Replace", { { "CLASS", "REBAR::STD::REGEX::ENGINE" } });
 
             a_regex_instance[a_environment.str("ReplaceAll")] = a_environment.bind([](object* ret, environment* env) -> void {
                 const auto& this_object = env->arg(0);
@@ -86,7 +86,7 @@ namespace rebar::library::standard {
                 RE2::GlobalReplace(&out, *instance, replace.get_string().to_string_view());
 
                 REBAR_RETURN(env->str(out));
-            }, "ReplaceAll", "REBAR::STD::REGEX::ENGINE");
+            }, "ReplaceAll", { { "CLASS", "REBAR::STD::REGEX::ENGINE" } });
         }
 
         object load(environment& a_environment) override {

@@ -48,9 +48,42 @@ namespace rebar {
         };
     }
 
+    struct origin {
+        flags type_flags;
+        std::map<std::string, std::string> info;
+        // FILE/UNIT:
+        //   info["PATH"] - File path.
+        // LIBRARY:
+        //   info["LIB_NAME"] - Library name.
+        //   info["LIB_ID"] - Library ID.
+        //
+        // info["CLASS_PATH"] - Optional class path.
+
+        struct flag {
+            REBAR_DEFINE_FLAG(none, 0);
+
+            // Intrinsic Rebar functions. (E.g. for Exception class.)
+            REBAR_DEFINE_FLAG(internal, 1);
+            // Standard Rebar functions. Compiled function as a part of a larger
+            // compilation unit. (E.g. function defined within a file.)
+            REBAR_DEFINE_FLAG(standard, 2);
+            // Functions that are compiled with code from an unknown source.
+            // Compiled with functions such as compile_string.
+            REBAR_DEFINE_FLAG(immediate, 3);
+            // Functions compiled within a file.
+            REBAR_DEFINE_FLAG(file, 4);
+            // Entire file compiled to a function.
+            REBAR_DEFINE_FLAG(unit, 5);
+            // Function from a library.
+            REBAR_DEFINE_FLAG(library, 6);
+            // Function bound from a native function.
+            REBAR_DEFINE_FLAG(bound, 7);
+        };
+    };
+
     struct function_info {
         std::string m_name;
-        std::string m_origin; // "FILE;C:\dev\main\main.rbr"
+        origin m_origin;
         size_t m_id;
 
         std::unique_ptr<function_info_source::source> m_source;
@@ -59,7 +92,7 @@ namespace rebar {
             return m_name;
         }
 
-        [[nodiscard]] std::string_view get_origin() const noexcept {
+        [[nodiscard]] const origin& get_origin() const noexcept {
             return m_origin;
         }
 
@@ -78,16 +111,12 @@ namespace rebar {
             node m_source_node;
 
             rebar(std::string_view a_plaintext, node a_source_node) : m_plaintext_source(a_plaintext), m_source_node(a_source_node) {}
-
-            ~rebar() {}
         };
 
         struct native : public source {
             callable m_function;
 
-            native(callable a_function) : m_function(a_function) {}
-
-            ~native() {}
+            explicit native(callable a_function) : m_function(a_function) {}
         };
     }
 }

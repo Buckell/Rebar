@@ -118,7 +118,7 @@ namespace rebar {
             m_flags &= (~a_flags);
         }
 
-        [[nodiscard]] function compile(parse_unit& a_unit) override;
+        [[nodiscard]] function compile(parse_unit& a_unit, const origin& a_origin) override;
 
         [[nodiscard]] function bind(callable a_function) override {
             return { m_environment, reinterpret_cast<void*>(a_function) };
@@ -218,6 +218,7 @@ namespace rebar {
         struct function_context {
             asmjit::x86::Compiler& assembler;
             compiler_function_source& source;
+            const origin& func_origin;
 
             std::vector<std::unordered_map<std::string_view, object>> constant_tables;
 
@@ -269,7 +270,7 @@ namespace rebar {
 
             asmjit::x86::Mem function_call_information;
 
-            function_context(asmjit::x86::Compiler& a_cc, compiler_function_source& a_source) : assembler(a_cc), source(a_source) {
+            function_context(asmjit::x86::Compiler& a_cc, compiler_function_source& a_source, const origin& a_origin) : assembler(a_cc), source(a_source), func_origin(a_origin) {
                 input_flag_stack.push_back(pass_flag::none); // Next pass.
                 output_flag_stack.push_back(pass_flag::none); // Current pass.
             }
@@ -482,7 +483,7 @@ namespace rebar {
         }
 
     private:
-        function compile_function(parse_unit& a_unit, const node::parameter_list& a_parameters, const node::block& a_block);
+        function compile_function(parse_unit& a_unit, const node::parameter_list& a_parameters, const node::block& a_block, const origin& a_origin);
 
         void load_token(function_context& ctx, const token& a_token, output_side a_side);
         void load_identifier(function_context& ctx, std::string_view a_identifier, output_side a_side);

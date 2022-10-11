@@ -257,16 +257,50 @@ namespace rebar {
             return native_object::create<t_object>(get_native_class(a_identifier), a_in_place, std::forward<t_args>(a_args)...);
         }
 
-        [[nodiscard]] function compile_string(std::string a_string, std::optional<std::string> a_name = std::nullopt, std::optional<std::string> a_origin = std::nullopt) {
+        [[nodiscard]] function compile_string(std::string a_string, std::string a_name = "IMMEDIATE", std::map<std::string, std::string> a_info = {}) {
             m_parse_units.push_back(std::make_unique<parse_unit>(parse(m_lexer, std::move(a_string))));
 
             parse_unit& punit = *m_parse_units.back();
 
-            function func = m_provider->compile(punit);
+            origin orig;
+
+            orig.type_flags |= origin::flag::immediate | origin::flag::unit;
+            orig.info = std::move(a_info);
+
+            function func = m_provider->compile(punit, orig);
 
             emplace_function_info(func, {
-                a_name.has_value() ? std::move(a_name.value()) : "UNNAMED",
-                a_origin.has_value() ? a_origin.value() : "IMMEDIATE;"s + std::to_string(m_function_id_count),
+                std::move(a_name),
+                std::move(orig),
+                0,
+                std::make_unique<function_info_source::rebar>(punit.m_plaintext, node {
+                    punit.m_lex_unit.tokens(),
+                    punit.m_lex_unit.source_positions(),
+                    node::type::block,
+                    punit.m_block
+                })
+            });
+
+            return func;
+        }
+
+        [[nodiscard]] function compile_file(std::filesystem::path a_path, std::string a_name = "FILE", std::map<std::string, std::string> a_info = {}) {
+            m_parse_units.push_back(std::make_unique<parse_unit>(parse(m_lexer, read_file(a_path))));
+
+            parse_unit& punit = *m_parse_units.back();
+
+            origin orig;
+
+            orig.type_flags |= origin::flag::immediate | origin::flag::unit;
+            orig.info = std::move(a_info);
+
+            orig.info["FILE"] = std::filesystem::canonical(a_path).string();
+
+            function func = m_provider->compile(punit, orig);
+
+            emplace_function_info(func, {
+                std::move(a_name),
+                std::move(orig),
                 0,
                 std::make_unique<function_info_source::rebar>(punit.m_plaintext, node {
                     punit.m_lex_unit.tokens(),
@@ -292,12 +326,17 @@ namespace rebar {
             return *m_function_infos.at(bit_cast<size_t>(a_function.m_data));
         }
 
-        [[nodiscard]] object bind(callable a_function, std::optional<std::string> a_name = std::nullopt, std::optional<std::string> a_origin = std::nullopt) {
+        [[nodiscard]] object bind(callable a_function, std::string a_name = "BOUND", std::map<std::string, std::string> a_info = {}) {
             function func = m_provider->bind(a_function);
 
+            origin orig;
+
+            orig.type_flags |= origin::flag::bound | origin::flag::bound;
+            orig.info = std::move(a_info);
+
             emplace_function_info(func, {
-                a_name.has_value() ? a_name.value() : "UNNAMED",
-                a_origin.has_value() ? a_origin.value() : "NATIVE;"s + std::to_string(m_function_id_count),
+                std::move(a_name),
+                std::move(orig),
                 0,
                 std::make_unique<function_info_source::native>(a_function)
             });

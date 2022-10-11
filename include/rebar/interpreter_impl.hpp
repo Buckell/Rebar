@@ -794,7 +794,12 @@ namespace rebar {
 
                         auto& env_interpreter = dynamic_cast<interpreter&>(m_environment.execution_provider());
 
-                        env_interpreter.m_function_sources.emplace_back(dynamic_cast<function_source*>(new interpreted_function_source(m_environment, decl.m_parameters, m_unit, decl.m_body)));
+                        origin orig;
+
+                        orig.type_flags = m_origin.type_flags & ~origin::flag::unit;
+                        orig.info = m_origin.info;
+
+                        env_interpreter.m_function_sources.emplace_back(dynamic_cast<function_source*>(new interpreted_function_source(m_environment, decl.m_parameters, m_unit, decl.m_body, orig)));
 
                         function func { m_environment, reinterpret_cast<void*>(env_interpreter.m_function_sources.back().get()) };
 
@@ -807,7 +812,7 @@ namespace rebar {
 
                         m_environment.emplace_function_info(func, {
                             std::string(function_identifier_plaintext), // TODO: Generate "useful" name for functions.
-                            "REBAR INTERNAL;INTERPRETER;"s + std::to_string(m_environment.get_current_function_id_stack()),
+                            std::move(orig),
                             0,
                             std::make_unique<function_info_source::rebar>(source.m_plaintext_source, n) // TODO: Implement full function info for interpreter functions.
                         });

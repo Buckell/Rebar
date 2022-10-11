@@ -12,7 +12,7 @@
 
 namespace rebar {
     struct provider {
-        [[nodiscard]] virtual function compile(parse_unit& a_unit) = 0;
+        [[nodiscard]] virtual function compile(parse_unit& a_unit, const origin& a_origin) = 0;
         [[nodiscard]] virtual function bind(callable a_function) = 0;
         [[nodiscard]] virtual object call(const void* a_data) = 0;
         [[noreturn]] virtual void throw_exception() = 0;

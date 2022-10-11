@@ -39,7 +39,7 @@ namespace rebar::library::standard {
                 }
 
                 *ret = env->str(final);
-            }, "ToString", "REBAR::STD::STRING_UTILITY::STRING_BUILDER");
+            }, "ToString", { { "CLASS", "REBAR::STD::STRING_UTILITY::STRING_BUILDER" } });
 
             a_string_builder[a_environment.str("Append")] = a_environment.bind([](object* ret, environment* env) -> void {
                 object this_object = env->arg(0);
@@ -48,7 +48,7 @@ namespace rebar::library::standard {
                 this_object.get_native_object().get_object<std::vector<std::string>>().push_back(obj.to_string());
 
                 *ret = null;
-            }, "Append", "REBAR::STD::STRING_UTILITY::STRING_BUILDER");
+            }, "Append", { { "CLASS", "REBAR::STD::STRING_UTILITY::STRING_BUILDER" } });
         }
 
         object load(environment& a_environment) override {

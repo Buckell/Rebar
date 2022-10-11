@@ -20,7 +20,7 @@ namespace rebar::library::standard {
             auto& array_table = a_environment.get_array_virtual_table();
 
             const auto define_array_function = [&a_environment, &array_table](const std::string_view a_identifier, callable a_function) noexcept {
-                array_table[a_environment.str(a_identifier)] = a_environment.bind(a_function, std::string(a_identifier), "REBAR::STD::ARRAY_BASE");
+                array_table[a_environment.str(a_identifier)] = a_environment.bind(a_function, std::string(a_identifier), { { "CLASS", "REBAR::STD::ARRAY_BASE" } });
             };
 
             define_array_function("Size", Size);

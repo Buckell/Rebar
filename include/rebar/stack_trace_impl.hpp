@@ -27,8 +27,13 @@ namespace rebar {
         }
 
         m_line += info.get_name();
-        m_line += " at ";
-        m_line += info.m_origin;
+
+        auto it = info.m_origin.info.find("FILE");
+
+        if (it != info.m_origin.info.cend()) {
+            m_line += " at ";
+            m_line += it->second;
+        }
     }
 }
 
