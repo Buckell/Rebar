@@ -11,7 +11,7 @@
 #include "table.hpp"
 
 namespace rebar {
-    struct virtual_table : public table {
+    struct virtual_table : public rtable {
         template <size_t v_arguments>
         using assignment_operation_function = std::conditional_t<v_arguments == 0, void (*)(environment*, native_object),
         std::conditional_t<v_arguments == 1, void (*)(environment*, native_object, const object&),

@@ -12,7 +12,7 @@
 #include "native_object.hpp"
 
 namespace rebar {
-    class table;
+    struct rtable;
 
     struct alignas(sizeof(size_t) * 2) object {
         enum class type : enum_base {
@@ -62,7 +62,7 @@ namespace rebar {
             a_array.reference();
         }
 
-        object(table* a_table) noexcept : m_type(type::table), m_data(reinterpret_cast<size_t>(a_table)) {
+        object(rtable* a_table) noexcept : m_type(type::table), m_data(reinterpret_cast<size_t>(a_table)) {
             reference(*this);
         }
 
@@ -190,8 +190,8 @@ namespace rebar {
             return *reinterpret_cast<string*>(&m_data);
         }
 
-        [[nodiscard]] table& get_table() const noexcept {
-            return *reinterpret_cast<table*>(m_data);
+        [[nodiscard]] rtable& get_table() const noexcept {
+            return *reinterpret_cast<rtable*>(m_data);
         }
 
         [[nodiscard]] native_object& get_native_object() const noexcept {

@@ -333,7 +333,7 @@ namespace rebar {
 
                 REBAR_CODE_GENERATION_GUARD({
                     asmjit::InvokeNode* table_invoke;
-                    cc.invoke(&table_invoke, _ext_allocate_table, asmjit::FuncSignatureT<table*>(platform_call_convention));
+                    cc.invoke(&table_invoke, _ext_allocate_table, asmjit::FuncSignatureT<rtable*>(platform_call_convention));
                     table_invoke->setRet(0, ctx.identifier);
                 })
 

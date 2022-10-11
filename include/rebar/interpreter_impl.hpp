@@ -18,7 +18,7 @@ namespace rebar {
             identifier_as_string
         };
 
-        std::vector<table> local_tables;
+        std::vector<rtable> local_tables;
 
         const auto find_variable = [this, &local_tables](const object a_key) -> object& {
             for (size_t i = local_tables.size(); i >= 1; --i) {
@@ -67,7 +67,7 @@ namespace rebar {
             } else if (a_node.is_immediate_table()) {
                 const auto& immediate = a_node.get_immediate_table();
 
-                auto* tbl = new table;
+                auto* tbl = new rtable;
 
                 for (const auto& entry : immediate.m_entries) {
                     (*tbl)[detail_resolve_node(entry.first, node_tags::identifier_as_string)] = evaluate_expression(entry.second);
@@ -692,7 +692,7 @@ namespace rebar {
 
         std::function<return_state (const span<node>)> evaluate_block = [this, &interp, &local_tables, &evaluate_expression, &evaluate_block, &resolve_assignable_expression](const span<node> a_block) -> return_state {
             local_tables.emplace_back();
-            table& local_table = local_tables.back();
+            rtable& local_table = local_tables.back();
 
             bool prior_eval = true;
 

@@ -52,7 +52,7 @@ namespace rebar::library::standard {
         }
 
         object load(environment& a_environment) override {
-            table* tbl = new table;
+            rtable* tbl = new rtable;
 
             rebar::virtual_table& string_builder_virtual_table = a_environment.register_native_class("REBAR::STD::STRING_UTILITY::STRING_BUILDER");
             load_string_builder(a_environment, string_builder_virtual_table);

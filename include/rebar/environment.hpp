@@ -69,9 +69,9 @@ namespace rebar {
         std::map<size_t, std::unique_ptr<function_info>> m_function_infos;
         size_t m_function_id_count = 0;
 
-        table m_global_table;
-        table m_string_virtual_table;
-        table m_array_virtual_table;
+        rtable m_global_table;
+        rtable m_string_virtual_table;
+        rtable m_array_virtual_table;
 
         std::istream* m_stream_in = &std::cin;
         std::ostream* m_stream_out = &std::cout;
@@ -111,11 +111,11 @@ namespace rebar {
             return found->second;
         }
 
-        [[nodiscard]] inline table& get_string_virtual_table() noexcept {
+        [[nodiscard]] inline rtable& get_string_virtual_table() noexcept {
             return m_string_virtual_table;
         }
 
-        [[nodiscard]] inline table& get_array_virtual_table() noexcept {
+        [[nodiscard]] inline rtable& get_array_virtual_table() noexcept {
             return m_array_virtual_table;
         }
 
@@ -130,7 +130,7 @@ namespace rebar {
         }
 
         [[noreturn]] void throw_exception(const std::string_view a_exception_type, const std::string_view a_exception_message) {
-            table* tbl = new table;
+            rtable* tbl = new rtable;
             tbl->emplace(str("message"), str(a_exception_message));
             set_runtime_exception_information(str(a_exception_type), tbl);
 
@@ -414,7 +414,7 @@ namespace rebar {
             return *m_stream_error;
         }
 
-        [[nodiscard]] table& global_table() noexcept {
+        [[nodiscard]] rtable& global_table() noexcept {
             return m_global_table;
         }
 

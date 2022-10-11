@@ -90,7 +90,7 @@ namespace rebar::library::standard {
         }
 
         object load(environment& a_environment) override {
-            table* tbl = new table;
+            rtable* tbl = new rtable;
 
             rebar::virtual_table& regex_instance_virtual_table = a_environment.register_native_class("REBAR::STD::REGEX::ENGINE");
             load_regex_instance(a_environment, regex_instance_virtual_table);

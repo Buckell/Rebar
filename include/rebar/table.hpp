@@ -10,18 +10,19 @@
 #include <skarupke_map.hpp>
 
 namespace rebar {
-    struct table : public ska::detailv3::sherwood_v3_table<
+    struct rtable : public ska::detailv3::sherwood_v3_table<
             std::pair<object, object>,
             object,
             std::hash<object>,
             ska::detailv3::KeyOrValueHasher<object, std::pair<object, object>, std::hash<object>>,
-            std::equal_to<object>,
-            ska::detailv3::KeyOrValueEquality<object, std::pair<object, object>, std::equal_to<object>>,
+            std::equal_to<>,
+            ska::detailv3::KeyOrValueEquality<object, std::pair<object, object>, std::equal_to<>>,
             std::allocator<std::pair<object, object>>,
             typename std::allocator_traits<std::allocator<std::pair<object, object>>>::template rebind_alloc<ska::detailv3::sherwood_v3_entry<std::pair<object, object>>>
     > {
         size_t m_reference_count = 0;
 
+    public:
         [[nodiscard]] inline object& operator[](const object a_key) {
             return emplace(a_key, object()).first->second;
         }
@@ -56,14 +57,14 @@ namespace rebar {
             return found->second;
         }
 
-        void add(const table& a_table) {
+        void add(const rtable& a_table) {
             for (const std::pair<object, object>& pair : a_table) {
                 emplace(pair);
             }
         }
 
     public:
-        [[nodiscard]] friend bool operator==(const table& lhs, const table& rhs) {
+        [[nodiscard]] friend bool operator==(const rtable& lhs, const rtable& rhs) {
             if (lhs.size() != rhs.size()) {
                 return false;
             }
@@ -79,13 +80,13 @@ namespace rebar {
             return true;
         }
 
-        [[nodiscard]] friend bool operator!=(const table& lhs, const table& rhs) {
+        [[nodiscard]] friend bool operator!=(const rtable& lhs, const rtable& rhs) {
             return !(lhs == rhs);
         }
 
         // TODO: Add "add" and "add assignment" operator.
 
-        [[nodiscard]] friend object index(const table* a_table, const object& a_key) {
+        [[nodiscard]] friend object index(const rtable* a_table, const object& a_key) {
             auto found = a_table->find(a_key);
 
             if (found == a_table->end()) {
@@ -95,7 +96,7 @@ namespace rebar {
             return found->second;
         }
 
-        friend void emplace(table* a_table, const object a_key, const object a_value) {
+        friend void emplace(rtable* a_table, const object a_key, const object a_value) {
             a_table->emplace(a_key, a_value);
         }
     };

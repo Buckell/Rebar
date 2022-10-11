@@ -255,7 +255,7 @@ namespace rebar {
         return class_tags_strings[static_cast<size_t>(a_class_tag)];
     }
 
-    class object;
+    struct object;
     class environment;
 
     using callable = void (*)(object*, environment*);

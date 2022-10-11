@@ -60,8 +60,8 @@ namespace rebar {
         std::cout << "[OUTPUT] " << type << " " << std::hex << data << std::endl;
     }
 
-    table* _ext_allocate_table() {
-        return new table;
+    rtable* _ext_allocate_table() {
+        return new rtable;
     }
 
     void _ext_allocate_array(object* ret, size_t a_size) {
