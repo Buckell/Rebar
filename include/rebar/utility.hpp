@@ -10,6 +10,7 @@
 #include <fstream>
 #include <algorithm>
 #include <cstring>
+#include <filesystem>
 
 #include "definitions.hpp"
 
@@ -171,7 +172,7 @@ namespace rebar {
         return nullptr;
     }
 
-    [[maybe_unused]] [[nodiscard]] std::string read_file(const std::string_view a_file) {
+    [[maybe_unused]] [[nodiscard]] std::string read_file(const std::filesystem::path a_file) {
         std::ifstream file_stream(std::string(a_file), std::ifstream::in);
         std::stringstream in_string_stream;
         in_string_stream << file_stream.rdbuf();
