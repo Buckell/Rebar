@@ -15,6 +15,7 @@ namespace rebar {
     public:
         explicit table(environment& a_environment);
         table(environment& a_environment, rtable* a_table) : m_environment(a_environment), m_table(a_table) {}
+        table(environment& a_environment, rtable& a_table) : m_environment(a_environment), m_table(&a_table) {}
 
         explicit table(const table& a_table);
 
