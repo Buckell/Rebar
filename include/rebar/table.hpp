@@ -23,11 +23,11 @@ namespace rebar {
         size_t m_reference_count = 0;
 
     public:
-        [[nodiscard]] inline object& operator[](const object a_key) {
+        [[nodiscard]] inline object& operator[](const object& a_key) {
             return emplace(a_key, object()).first->second;
         }
 
-        [[nodiscard]] object& at(const object a_key) {
+        [[nodiscard]] object& at(const object& a_key) {
             auto found = this->find(a_key);
 
             if (found == this->cend()) {
@@ -37,7 +37,7 @@ namespace rebar {
             return found->second;
         }
 
-        [[nodiscard]] const object& at(const object a_key) const {
+        [[nodiscard]] const object& at(const object& a_key) const {
             auto found = this->find(a_key);
 
             if (found == this->cend()) {
@@ -47,7 +47,7 @@ namespace rebar {
             return found->second;
         }
 
-        [[nodiscard]] object index(const object a_key) const {
+        [[nodiscard]] object index(const object& a_key) const {
             auto found = this->find(a_key);
 
             if (found == this->cend()) {
@@ -96,7 +96,7 @@ namespace rebar {
             return found->second;
         }
 
-        friend void emplace(rtable* a_table, const object a_key, const object a_value) {
+        friend void emplace(rtable* a_table, const object& a_key, const object& a_value) {
             a_table->emplace(a_key, a_value);
         }
     };
