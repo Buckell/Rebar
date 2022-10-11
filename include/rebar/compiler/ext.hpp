@@ -12,7 +12,7 @@
 
 namespace rebar {
     object* _ext_index_global(environment* env, size_t object_type, size_t object_data) {
-        return &env->global_table()[object{ (type)object_type, object_data }];
+        return &env->global_rtable()[object{ (type)object_type, object_data }];
     }
 
     void _ext_reference_object(object* obj) {

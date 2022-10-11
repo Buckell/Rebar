@@ -57,7 +57,7 @@ namespace rebar::library::standard {
         }
 
         object load(environment& a_environment) override {
-            auto& global_table = a_environment.global_table();
+            auto& global_table = a_environment.global_rtable();
 
             const auto define_global_function = [&a_environment, &global_table](const std::string_view a_identifier, callable a_function) noexcept {
                 global_table[a_environment.str(a_identifier)] = a_environment.bind(a_function, std::string(a_identifier), { { "BASE", "REBAR::STD::BASE" } });

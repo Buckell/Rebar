@@ -10,6 +10,7 @@
 #include "array.hpp"
 #include "function.hpp"
 #include "native_object.hpp"
+#include "table_interface.hpp"
 
 namespace rebar {
     struct rtable;
@@ -63,6 +64,10 @@ namespace rebar {
         }
 
         object(rtable* a_table) noexcept : m_type(type::table), m_data(reinterpret_cast<size_t>(a_table)) {
+            reference(*this);
+        }
+
+        object(const table& a_table) noexcept : m_type(type::table), m_data(reinterpret_cast<size_t>(a_table.get_rtable())) {
             reference(*this);
         }
 
@@ -192,6 +197,10 @@ namespace rebar {
 
         [[nodiscard]] rtable& get_table() const noexcept {
             return *reinterpret_cast<rtable*>(m_data);
+        }
+
+        [[nodiscard]] table as_table(environment& a_environment) const noexcept {
+            return { a_environment, &get_table() };
         }
 
         [[nodiscard]] native_object& get_native_object() const noexcept {

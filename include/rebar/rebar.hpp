@@ -48,6 +48,8 @@
 #include "string.hpp"
 #include "string_impl.hpp"
 #include "table.hpp"
+#include "table_interface.hpp"
+#include "table_interface_impl.hpp"
 #include "token.hpp"
 #include "utility.hpp"
 #include "zip.hpp"

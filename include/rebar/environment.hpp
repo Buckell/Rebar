@@ -414,8 +414,12 @@ namespace rebar {
             return *m_stream_error;
         }
 
-        [[nodiscard]] rtable& global_table() noexcept {
+        [[nodiscard]] rtable& global_rtable() noexcept {
             return m_global_table;
+        }
+
+        [[nodiscard]] table global_table() noexcept {
+            return { *this, &m_global_table };
         }
 
         [[nodiscard]] lexer& code_lexer() noexcept {

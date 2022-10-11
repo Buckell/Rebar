@@ -29,7 +29,7 @@ namespace rebar {
                 }
             }
 
-            return m_environment.global_table()[a_key];
+            return m_environment.global_rtable()[a_key];
         };
 
         std::function<object (const node::expression&)> evaluate_expression;
