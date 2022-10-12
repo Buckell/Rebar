@@ -9,8 +9,8 @@
 #include "environment.hpp"
 
 namespace rebar {
-    native_template_function_definition::native_template_function_definition(environment& a_env, std::string_view a_name, virtual_table& a_table, callable a_function) {
-        a_table[a_env.str(a_name)] = a_env.bind(a_function);
+    native_template_function_definition::native_template_function_definition(environment& a_env, std::string_view a_name, std::string_view a_class, virtual_table& a_table, callable a_function) {
+        a_table[a_env.str(a_name)] = a_env.bind(a_function, std::string(a_name), { { "CLASS", std::string(a_class) } });
     }
 
     template <typename t_internal_type>
