@@ -17,9 +17,9 @@ namespace rebar {
         table(environment& a_environment, rtable* a_table) : m_environment(a_environment), m_table(a_table) {}
         table(environment& a_environment, rtable& a_table) : m_environment(a_environment), m_table(&a_table) {}
 
-        explicit table(const table& a_table);
+        table(const table& a_table);
 
-        explicit table(table&& a_table) : m_environment(a_table.m_environment), m_table(a_table.m_table) {
+        table(table&& a_table) : m_environment(a_table.m_environment), m_table(a_table.m_table) {
             a_table.m_table = nullptr;
         }
 

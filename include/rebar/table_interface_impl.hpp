@@ -9,7 +9,9 @@
 #define REBAR_TABLE_INTERFACE_IMPL_HPP
 
 namespace rebar {
-    table::table(environment& a_environment) : m_environment(a_environment), m_table(new rtable) {}
+    table::table(environment& a_environment) : m_environment(a_environment), m_table(new rtable) {
+        ++m_table->m_reference_count;
+    }
 
     table::table(const table& a_table) : m_environment(a_table.m_environment), m_table(a_table.m_table) {
         ++m_table->m_reference_count;
