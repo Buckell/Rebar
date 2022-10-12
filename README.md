@@ -32,7 +32,7 @@ Global variables are those that can always be accessed from any part of the code
 ```cpp
 rebar::environment env;
 
-rebar::function first_file = env.compile_string("GlobalVar = \"Hello, world!\"; LocalVar = \"Goodbye, world!\";");
+rebar::function first_file = env.compile_string("GlobalVar = \"Hello, world!\"; local LocalVar = \"Goodbye, world!\";");
 first_file();
 
 rebar::function second_file = env.compile_string("PrintLn(GlobalVar); PrintLn(LocalVar);");
