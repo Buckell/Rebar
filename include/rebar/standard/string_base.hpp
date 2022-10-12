@@ -373,10 +373,10 @@ namespace rebar::library::standard {
         }
 
         object load(environment& a_environment) override {
-            auto& string_table = a_environment.get_string_virtual_table();
+            table string_table{ a_environment, a_environment.get_string_virtual_table() };
 
-            const auto define_string_function = [&a_environment, &string_table](const std::string_view a_identifier, callable a_function) noexcept {
-                string_table[a_environment.str(a_identifier)] = a_environment.bind(a_function, std::string(a_identifier), { { "CLASS", "REBAR::STD::STRING_BASE" } });
+            const auto define_string_function = [&string_table, &a_environment](const std::string_view a_identifier, callable a_function) noexcept {
+                string_table[a_identifier] = a_environment.bind(a_function, std::string(a_identifier), { { "CLASS", "REBAR::STD::STRING_BASE" } });
             };
 
             define_string_function("Contains",         Contains);

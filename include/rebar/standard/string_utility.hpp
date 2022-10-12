@@ -11,19 +11,21 @@ namespace rebar::library::standard {
     struct string_utility : public library {
         string_utility() : library(usage::explicit_include) {}
 
-        void load_string_builder(environment& a_environment, rebar::virtual_table& a_string_builder) {
-            a_string_builder.overload_new = [](environment* env, native_object) -> rebar::object {
-                return env->create_native_object<std::vector<std::string>>("REBAR::STD::STRING_UTILITY::STRING_BUILDER");
-            };
+        struct string_builder : public native_template<std::vector<std::string>> {
+            REBAR_NATIVE_CLASS(string_builder, "REBAR::STD::STRING_UTILITY::STRING_BUILDER");
 
-            a_string_builder.overload_addition_assignment = [](environment* env, native_object a_this, const object& rhs) {
-                a_this.get_object<std::vector<std::string>>().push_back(rhs.to_string());
-            };
+            REBAR_OVERLOAD_CONSTRUCT() {
+                return env->create_native_object<contained_type>(class_name);
+            }
 
-            a_string_builder[a_environment.str("ToString")] = a_environment.bind([](object* ret, environment* env) -> void {
+            REBAR_OVERLOAD_ADDITION_ASSIGNMENT() {
+                self.get_object<contained_type>().push_back(rhs.to_string());
+            }
+
+            REBAR_NATIVE_FUNCTION(ToString) {
                 object this_object = env->arg(0);
 
-                auto& strings = this_object.get_native_object().get_object<std::vector<std::string>>();
+                auto& strings = this_object.get_native_object().get_object<contained_type>();
 
                 size_t size = 0;
 
@@ -38,28 +40,26 @@ namespace rebar::library::standard {
                     final += str;
                 }
 
-                *ret = env->str(final);
-            }, "ToString", { { "CLASS", "REBAR::STD::STRING_UTILITY::STRING_BUILDER" } });
+                REBAR_RETURN(env->str(final));
+            }
 
-            a_string_builder[a_environment.str("Append")] = a_environment.bind([](object* ret, environment* env) -> void {
+            REBAR_NATIVE_FUNCTION(Append) {
                 object this_object = env->arg(0);
                 object obj = env->arg(1);
 
-                this_object.get_native_object().get_object<std::vector<std::string>>().push_back(obj.to_string());
+                this_object.get_native_object().get_object<contained_type>().push_back(obj.to_string());
 
-                *ret = null;
-            }, "Append", { { "CLASS", "REBAR::STD::STRING_UTILITY::STRING_BUILDER" } });
-        }
+                REBAR_RETURN(null);
+            }
+        };
 
         object load(environment& a_environment) override {
-            rtable* tbl = new rtable;
+            table string_utility(a_environment);
 
-            rebar::virtual_table& string_builder_virtual_table = a_environment.register_native_class("REBAR::STD::STRING_UTILITY::STRING_BUILDER");
-            load_string_builder(a_environment, string_builder_virtual_table);
-            native_object n_obj = a_environment.create_native_object<std::vector<std::string>>(string_builder_virtual_table);
-            (*tbl)[a_environment.str("StringBuilder")] = n_obj;
+            string_builder native_string_builder(a_environment);
+            string_utility["StringBuilder"] = native_string_builder.build_object();
 
-            return tbl;
+            return string_utility;
         }
     };
 

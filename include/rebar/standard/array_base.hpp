@@ -16,14 +16,12 @@ namespace rebar::library::standard {
             REBAR_RETURN(static_cast<integer>(self.size()));
         }
 
-        object load(environment& a_environment) override {
-            auto& array_table = a_environment.get_array_virtual_table();
+        object load(environment& a_env) override {
+            table array_table{ a_env, a_env.get_array_virtual_table() };
 
-            const auto define_array_function = [&a_environment, &array_table](const std::string_view a_identifier, callable a_function) noexcept {
-                array_table[a_environment.str(a_identifier)] = a_environment.bind(a_function, std::string(a_identifier), { { "CLASS", "REBAR::STD::ARRAY_BASE" } });
-            };
+            std::map<std::string, std::string> omap{ { "CLASS", "REBAR::STD::ARRAY_BASE" } };
 
-            define_array_function("Size", Size);
+            array_table["Size"] = a_env.bind(Size, "Size", omap);
 
             return null;
         }

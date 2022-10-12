@@ -56,17 +56,15 @@ namespace rebar::library::standard {
             REBAR_RETURN(env->str(input));
         }
 
-        object load(environment& a_environment) override {
-            auto& global_table = a_environment.global_rtable();
+        object load(environment& a_env) override {
+            auto global_table = a_env.global_table();
 
-            const auto define_global_function = [&a_environment, &global_table](const std::string_view a_identifier, callable a_function) noexcept {
-                global_table[a_environment.str(a_identifier)] = a_environment.bind(a_function, std::string(a_identifier), { { "BASE", "REBAR::STD::BASE" } });
-            };
+            std::map<std::string, std::string> omap{ { "BASE", "REBAR::STD::BASE" } };
 
-            define_global_function("PrintLn", PrintLn);
-            define_global_function("Print", Print);
-            define_global_function("Include", Include);
-            define_global_function("Input", Input);
+            global_table["PrintLn"] = a_env.bind(PrintLn, "PrintLn", omap);
+            global_table["Print"]   = a_env.bind(Print, "Print", omap);
+            global_table["Include"] = a_env.bind(Include, "Include", omap);
+            global_table["Input"]   = a_env.bind(Input, "Input", omap);
 
             return null;
         }
