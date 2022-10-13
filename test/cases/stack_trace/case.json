@@ -1,0 +1,11 @@
+{
+    "name": "Stack Trace",
+    "output": [
+        "RecursionException",
+        "RecursionException",
+        "RecursionException",
+        "RecursionException",
+        "RecursionException",
+        "stack_trace"
+    ]
+}

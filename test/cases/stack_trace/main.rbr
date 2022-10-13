@@ -1,0 +1,15 @@
+function RecursionException(index = 0) {
+    if (index >= 4) {
+        throw Exception;
+    } else {
+        RecursionException(index + 1);
+    }
+}
+
+try {
+    RecursionException();
+} catch (e) {
+    for (local i = 0; i < e.GetTraceCount(); i++) {
+        PrintLn(e.GetTraceRow(i).function_name);
+    }
+}
