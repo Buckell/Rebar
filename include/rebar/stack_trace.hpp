@@ -25,6 +25,19 @@ namespace rebar {
                 m_parse_unit(a_unit),
                 m_expression(a_expression) {}
 
+            [[nodiscard]] function get_function() const noexcept {
+                return m_function;
+            }
+
+            [[nodiscard]] std::pair<size_t, file_position> get_position() const noexcept {
+                if (m_parse_unit && m_expression) {
+                    auto index = m_expression->get_operand(0).m_origin_source_positions[0].get_index();
+                    return { index, calculate_file_position(m_parse_unit->m_plaintext, index) };
+                } else {
+                    return { 0, { 0, 0 } };
+                }
+            }
+
             [[nodiscard]] std::string_view to_string() noexcept {
                 if (!m_cache_valid) {
                     generate_line();
@@ -61,6 +74,10 @@ namespace rebar {
             }
 
             return m_message;
+        }
+
+        [[nodiscard]] const std::vector<entry>& entries() const noexcept {
+            return m_entries;
         }
 
     private:
