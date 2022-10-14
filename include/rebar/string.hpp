@@ -31,7 +31,7 @@ namespace rebar {
             reference();
         }
 
-        string(environment& a_env, const std::string_view a_string);
+        string(environment& a_env, std::string_view a_string);
 
         ~string() noexcept {
             dereference();
@@ -73,7 +73,7 @@ namespace rebar {
             return m_root_pointer != rhs.m_root_pointer;
         }
 
-        friend std::ostream& operator<<(std::ostream& lhs, const string rhs) {
+        friend std::ostream& operator<<(std::ostream& lhs, const string& rhs) {
             return (lhs << rhs.to_string_view());
         }
 
@@ -128,7 +128,7 @@ namespace rebar {
 
 template <>
 struct std::hash <rebar::string> {
-    size_t operator()(const rebar::string a_string) const noexcept {
+    size_t operator()(const rebar::string& a_string) const noexcept {
         return xxh::xxhash3<rebar::cpu_bit_architecture()>(a_string.to_string_view());
     }
 };

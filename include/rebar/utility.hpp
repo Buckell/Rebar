@@ -172,7 +172,7 @@ namespace rebar {
         return nullptr;
     }
 
-    [[maybe_unused]] [[nodiscard]] std::string read_file(const std::filesystem::path a_file) {
+    [[maybe_unused]] [[nodiscard]] std::string read_file(const std::filesystem::path& a_file) {
         std::ifstream file_stream(std::string(a_file), std::ifstream::in);
         std::stringstream in_string_stream;
         in_string_stream << file_stream.rdbuf();
@@ -215,7 +215,7 @@ namespace rebar {
     struct file_position {
         size_t row, column;
 
-        file_position(const size_t a_row = 0, const size_t a_column = 0) : row(a_row), column(a_column) {}
+        explicit file_position(const size_t a_row = 0, const size_t a_column = 0) : row(a_row), column(a_column) {}
 
         [[nodiscard]] size_t get_row() const noexcept {
             return row;
@@ -232,7 +232,7 @@ namespace rebar {
 
     file_position calculate_file_position(const std::string_view a_plaintext, const size_t a_index) {
         if (a_index >= a_plaintext.size()) {
-            return { 0, 0 };
+            return file_position{ 0, 0 };
         }
 
         file_position position{ 1, 1 };
@@ -253,7 +253,7 @@ namespace rebar {
 
     std::pair<file_position, std::string_view> get_line(const std::string_view a_plaintext, const size_t a_index) {
         if (a_index >= a_plaintext.size()) {
-            return { { 0, 0 }, "" };
+            return { file_position{ 0, 0 }, "" };
         }
 
         file_position position { 0, 0 };

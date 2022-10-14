@@ -18,7 +18,7 @@ namespace rebar {
         };
 
     private:
-        void* m_root_pointer;
+        void* m_root_pointer = nullptr;
 
         // type = managed (array_type)
         // reference_count (size_t)
@@ -30,7 +30,7 @@ namespace rebar {
         // size (size_t)
         // index (size_t)
 
-        constexpr size_t structure_size(type a_type) {
+        static constexpr size_t structure_size(type a_type) {
             switch (a_type) {
                 case type::managed:
                     return (2 * sizeof(size_t)) + sizeof(std::vector<object>);
@@ -57,7 +57,7 @@ namespace rebar {
             return *(reinterpret_cast<size_t*>(m_root_pointer) + 4);
         }
 
-        [[nodiscard]] inline const size_t view_offset() const noexcept {
+        [[nodiscard]] inline size_t view_offset() const noexcept {
             return *(reinterpret_cast<size_t*>(m_root_pointer) + 4);
         }
 
@@ -66,7 +66,7 @@ namespace rebar {
 
         array() noexcept : m_root_pointer(nullptr) {}
 
-        array(const size_t a_size) {
+        explicit array(const size_t a_size) {
             initialize(type::managed, a_size);
         }
 
@@ -92,6 +92,10 @@ namespace rebar {
         }
 
         array& operator = (const array& rhs) {
+            if (&rhs == this) {
+                return *this;
+            }
+
             dereference();
             m_root_pointer = rhs.m_root_pointer;
             reference();
@@ -99,7 +103,11 @@ namespace rebar {
             return *this;
         }
 
-        array& operator = (array&& rhs) {
+        array& operator = (array&& rhs) noexcept {
+            if (&rhs == this) {
+                return *this;
+            }
+
             dereference();
 
             m_root_pointer = rhs.m_root_pointer;
@@ -154,7 +162,7 @@ namespace rebar {
 
         [[nodiscard]] object& operator [] (size_t index) noexcept;
 
-        void push_back(rebar::object a_object) noexcept;
+        void push_back(const rebar::object& a_object) noexcept;
 
         [[nodiscard]] array sub_array(const size_t a_offset, const size_t a_length) {
             // TODO: Bounds checking.

@@ -18,7 +18,7 @@ namespace rebar {
     class environment;
 
     class function {
-        friend class object;
+        friend struct object;
         friend class environment;
 
         environment& m_environment;

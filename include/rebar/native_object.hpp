@@ -9,7 +9,7 @@
 #include <utility>
 
 namespace rebar {
-    class object;
+    struct object;
 
     struct virtual_table;
 
@@ -36,7 +36,7 @@ namespace rebar {
         // 4 32 uint8_t m_data[m_data_size];
 
     public:
-        native_object(void* a_data) noexcept : m_root_pointer(a_data) {
+        explicit native_object(void* a_data) noexcept : m_root_pointer(a_data) {
             reference();
         }
 
@@ -55,6 +55,10 @@ namespace rebar {
         }
 
         native_object& operator = (const native_object& a_native_object) noexcept {
+            if (&a_native_object == this) {
+                return *this;
+            }
+
             dereference();
             m_root_pointer = a_native_object.m_root_pointer;
             reference();
@@ -63,8 +67,11 @@ namespace rebar {
         }
 
         native_object& operator = (native_object&& a_native_object) noexcept {
-            dereference();
+            if (&a_native_object == this) {
+                return *this;
+            }
 
+            dereference();
             m_root_pointer = a_native_object.m_root_pointer;
             a_native_object.m_root_pointer = nullptr;
 
@@ -82,7 +89,7 @@ namespace rebar {
                 };
             }
 
-            structured_native_object<t_object>* obj = reinterpret_cast<structured_native_object<t_object>*>(std::malloc(sizeof(structured_native_object<t_object>)));
+            auto* obj = reinterpret_cast<structured_native_object<t_object>*>(std::malloc(sizeof(structured_native_object<t_object>)));
 
             obj->m_reference_count = 0;          // Reference count. Initialize to 0. "Real" lifetime begins when native_object is constructed and returned.
             obj->m_virtual_table = &a_v_table;   // Virtual table.
@@ -91,7 +98,7 @@ namespace rebar {
 
             new (&obj->m_data) t_object(std::move(a_object)); // Data (object).
 
-            return { reinterpret_cast<void*>(obj) };
+            return native_object{ reinterpret_cast<void*>(obj) };
         }
 
         template <typename t_object, typename... t_args>
@@ -104,7 +111,7 @@ namespace rebar {
                 };
             }
 
-            structured_native_object<t_object>* obj = reinterpret_cast<structured_native_object<t_object>*>(std::malloc(sizeof(structured_native_object<t_object>)));
+            auto* obj = reinterpret_cast<structured_native_object<t_object>*>(std::malloc(sizeof(structured_native_object<t_object>)));
 
             obj->m_reference_count = 0;          // Reference count. Initialize to 0. "Real" lifetime begins when native_object is constructed and returned.
             obj->m_virtual_table = &a_v_table;   // Virtual table.
@@ -113,7 +120,7 @@ namespace rebar {
 
             new (&obj->m_data) t_object(std::forward<t_args>(a_args)...); // Data (object).
 
-            return { reinterpret_cast<void*>(obj) };
+            return native_object{ reinterpret_cast<void*>(obj) };
         }
 
         [[nodiscard]] constexpr void* data() noexcept {

@@ -62,7 +62,7 @@ namespace rebar {
         }
     }
 
-    void array::push_back(const object a_object) noexcept {
+    void array::push_back(const object& a_object) noexcept {
         // TODO: Block views.
         vector_reference().push_back(a_object);
     }

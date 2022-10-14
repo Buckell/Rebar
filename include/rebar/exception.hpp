@@ -8,6 +8,8 @@
 #include <exception>
 #include <string>
 #include <optional>
+#include <utility>
+#include <utility>
 
 #include "utility.hpp"
 
@@ -67,7 +69,7 @@ namespace rebar {
         std::string_view m_line;
 
         syntax_exception(std::string a_message, std::string a_origin, const size_t a_index, const file_position a_pos, const std::string_view a_line)
-            : exception("SYNTAX", a_message, 0), m_origin(a_origin), m_index(a_index), m_pos(a_pos), m_line(a_line) { get_message(); }
+            : exception("SYNTAX", std::move(a_message), 0), m_origin(std::move(a_origin)), m_index(a_index), m_pos(a_pos), m_line(a_line) { get_message(); }
 
         std::string generate_message() noexcept override {
             using namespace std::string_literals;
@@ -96,7 +98,7 @@ namespace rebar {
         //std::string_view m_line;
         //std::vector<stack_trace_entry> m_stack_trace;
 
-        runtime_exception(environment& a_environment);
+        explicit runtime_exception(environment& a_environment);
 
         std::string generate_message() noexcept override;
 

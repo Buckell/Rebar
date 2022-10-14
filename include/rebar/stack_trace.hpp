@@ -34,7 +34,7 @@ namespace rebar {
                     auto index = m_expression->get_operand(0).m_origin_source_positions[0].get_index();
                     return { index, calculate_file_position(m_parse_unit->m_plaintext, index) };
                 } else {
-                    return { 0, { 0, 0 } };
+                    return { 0, file_position{ 0, 0 } };
                 }
             }
 
