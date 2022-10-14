@@ -51,7 +51,7 @@ void run_test_cases(rebar::environment& env) {
 
         const auto& code_data = file_json["code"];
 
-        auto func = env.compile_file(file.path() / "main.rbr", file.path().stem().string());
+        auto func = env.compile_file(file.path() / "main.bar", file.path().stem().string());
 
         std::stringstream out_stream;
         env.set_out_stream(out_stream);
@@ -129,12 +129,12 @@ void run_test_cases(rebar::environment& env) {
 }
 
 void run_test_file(rebar::environment& env) {
-    std::string file_contents{ rebar::read_file("../test/test.rbr") };
+    std::string file_contents{ rebar::read_file("../test/test.bar") };
 
     rebar::parse_unit p_unit = rebar::parse(env.code_lexer(), file_contents);
     std::cout << p_unit.string_representation() << std::endl;
 
-    auto test_file = env.compile_file("../test/test.rbr", "main");
+    auto test_file = env.compile_file("../test/test.bar", "main");
 
     try {
         std::cout << test_file() << '\n' << std::endl;

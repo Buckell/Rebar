@@ -1,0 +1,17 @@
+function RecurseE(num) {
+    if (num == 4) {
+        throw Ex;
+    } else {
+        RecurseE(num + 1);
+    }
+}
+
+try {
+    RecurseE(0);
+} catch (e : Ex) {
+    for (local i = 0; i < e.GetTraceCount(); i++) {
+        PrintLn(e.GetTraceRow(i).function_name);
+    }
+}
+
+return true;
