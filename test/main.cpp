@@ -134,7 +134,7 @@ void run_test_file(rebar::environment& env) {
     rebar::parse_unit p_unit = rebar::parse(env.code_lexer(), file_contents);
     std::cout << p_unit.string_representation() << std::endl;
 
-    auto test_file = env.compile_string(file_contents);
+    auto test_file = env.compile_file("../test/test.rbr", "main");
 
     try {
         std::cout << test_file() << '\n' << std::endl;
