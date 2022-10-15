@@ -357,7 +357,7 @@ namespace rebar {
 
 template <>
 struct std::hash <rebar::object> {
-    size_t operator()(const rebar::object s) const noexcept {
+    size_t operator()(const rebar::object& s) const noexcept {
         return s.data();
     }
 };
