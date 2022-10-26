@@ -5,40 +5,41 @@ Fast, embeddable, JIT compiled language.
 This is concept code. There is still some discussion on what the final language will exactly look like, especially with more specific things like the case for standard function names, but this is a close approximation to how the final language might look.
 
 ```
-// Global variables are defined with an identifier, an equal sign, 
-// and the value (with the terminating semicolon of course).
-Variable1 = "This variable is global!";
+local StrUtil = Include("StringUtility");
 
-// Local variables are defined similarly to global variables but have
-// a simple "local" prefix.
-local Variable2 = "This variable is local!";
+local sb = new StrUtil::StringBuilder;
 
-// Variable identifiers can be defined with alphanumeric characters and underscores.
+// Either .Append() or the += operator works!
+sb.Append("Hello,");
+sb += " ";
+sb.Append("world!");
 
-// Standard "print" function. Outputs "Hello, world!" and a newline suffix to the console.
-PrintLn("Hello, world!");
+PrintLn(sb.ToString()); // Prints "Hello, world!"
+```
 
-// Function declaration/definition.
-// Similar to Javascript's function declaration.
-function ExampleFunction() {
-	PrintLn("This is a simple function!");
+### API Example
+
+##### Simple Example
+```cpp
+#include "rebar/rebar.hpp"
+
+int main() {
+    // Create the environment. This is where the magic happens.
+    rebar::environment env;
+
+    // Compile a string to print "Hello, world!" three times
+    // and return "Goodbye, world!"
+    rebar::function main_func = env.compile_string(R"(
+        for (local i = 0; i < 3; ++i) {
+            PrintLn("Hello, world!");
+        }
+
+        return "Goodbye, world!";
+    )");
+
+    // Call our compiled function and get the return value.
+    rebar::object return_object = main_func();
+
+    std::cout << return_object << std::endl; // "Goodbye, world!"
 }
 ```
-
-### Global Variables
-Global variables are those that can always be accessed from any part of the code and from totally different files--as long as they are compiled and ran under the same environment.
-
-##### Global Variables Demonstration
-```cpp
-rebar::environment env;
-
-rebar::function first_file = env.compile_string("GlobalVar = \"Hello, world!\"; local LocalVar = \"Goodbye, world!\";");
-first_file();
-
-rebar::function second_file = env.compile_string("PrintLn(GlobalVar); PrintLn(LocalVar);");
-second_file();
-// Prints:
-// Hello, world!
-// null
-```
-Local variables are only valid for the lifetime of their scope, while global variables are valid for the lifetime of the environment.
